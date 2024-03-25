@@ -1,11 +1,11 @@
-from beam_search.helpers import highest_ranked, all_at_goal, not_at_goal_set
-from beam_search.bsp import BSP, Part
-from beam_search.config import PRINT_VOLUME
-
 from unittest.mock import patch
 from unittest import TestCase
 
 from trimesh.creation import cylinder
+
+from beam_search.helpers import highest_ranked, all_at_goal, not_at_goal_set
+from beam_search.bsp import BSP, Part
+
 
 class TestHighestRanked(TestCase):
     def test_highest_ranked(self):

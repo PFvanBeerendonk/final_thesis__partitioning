@@ -11,12 +11,15 @@ def main():
 
     mesh = trimesh.load_mesh(mesh_path)
     
+    # maybe validate the input mesh, to check for watertightness
+    
     print('Starting beam search')
-    beam_search(mesh)
+    bsp = beam_search(mesh)
+    print('Finished beam search')
 
-
-    print('Exporting Files')
-    # sliced_mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out.stl')
+    print('Exporting Files of best Partition')
+    for i, part in enumerate(bsp.parts):
+        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}.stl')
 
 
 if __name__ == '__main__':
