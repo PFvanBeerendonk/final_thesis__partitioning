@@ -23,4 +23,4 @@ def all_at_goal(bsp_set: list[BSP]) -> bool:
     Assumes that fits_in_volume is correct for each part
 '''
 def not_at_goal_set(bsp_set: list[BSP]) -> list[BSP]:
-    return [bsp for bsp in bsp_set if bsp.all_fit()]
+    return [bsp for bsp in bsp_set if not bsp.all_fit()]

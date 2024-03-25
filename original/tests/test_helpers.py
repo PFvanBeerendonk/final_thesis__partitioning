@@ -1,4 +1,4 @@
-from beam_search.helpers import highest_ranked, all_at_goal
+from beam_search.helpers import highest_ranked, all_at_goal, not_at_goal_set
 from beam_search.bsp import BSP, Part
 from beam_search.config import PRINT_VOLUME
 
@@ -35,5 +35,63 @@ class TestAllAtGoal(TestCase):
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
 class TestNotAtGoalSet(TestCase):
-    def test_not_at_goal_set(self):
-        return
+    def test_empty(self):
+        mesh = cylinder(radius=2, height=10, sections=100)
+        p0 = Part(mesh)
+        b0 = BSP([p0])
+
+        assert p0.fits_in_volume
+
+        c1 = cylinder(radius=2, height=10, sections=100)
+        p1 = Part(c1)
+        c2 = cylinder(radius=2.1, height=10, sections=100)
+        p2 = Part(c2)
+        c3 = cylinder(radius=2.1, height=9.99, sections=100)
+        p3 = Part(c3)
+        b1 = BSP([p1, p2, p3])
+
+        assert p1.fits_in_volume
+        assert p2.fits_in_volume
+        assert p3.fits_in_volume
+        
+        bsp_set = [ b0, b1 ]
+        assert not_at_goal_set(bsp_set) == []
+
+    def test_partial(self):
+        mesh = cylinder(radius=2, height=10, sections=100)
+        p0 = Part(mesh)
+        b0 = BSP([p0])
+
+        assert p0.fits_in_volume
+
+        c1 = cylinder(radius=2, height=10, sections=100)
+        p1 = Part(c1)
+        c2 = cylinder(radius=5, height=7, sections=100)
+        p2 = Part(c2)
+        b1 = BSP([p1, p2])
+
+        assert p1.fits_in_volume
+        assert not p2.fits_in_volume
+        
+        bsp_set = [ b0, b1 ]
+        assert not_at_goal_set(bsp_set) == [ b1 ]
+
+
+    def test_fully(self):
+        mesh = cylinder(radius=2, height=11, sections=100)
+        p0 = Part(mesh)
+        b0 = BSP([p0])
+
+        assert not p0.fits_in_volume
+
+        c1 = cylinder(radius=2, height=10, sections=100)
+        p1 = Part(c1)
+        c2 = cylinder(radius=5, height=7, sections=100)
+        p2 = Part(c2)
+        b1 = BSP([p1, p2])
+
+        assert p1.fits_in_volume
+        assert not p2.fits_in_volume
+        
+        bsp_set = [ b0, b1 ]
+        assert not_at_goal_set(bsp_set) == bsp_set
