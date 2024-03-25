@@ -9,7 +9,6 @@ OUTPUT_FOLDER = '../../output'
 # Parameters
 BEAM_WIDTH = 4
 
-# Print Volume (in mm)
-PRINT_VOLUME_WIDTH = 100
-PRINT_VOLUME_HEIGHT = 100
-PRINT_VOLUME_DEPTH = 100
+# Print Volume (w, h, d) (in mm)
+PRINT_VOLUME = (100, 100, 100)
+

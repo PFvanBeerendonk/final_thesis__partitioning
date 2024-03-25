@@ -1,8 +1,4 @@
-from config import (
-    INPUT_FILE_PATH,
-    OUTPUT_FOLDER,
-    BEAM_WIDTH,
-)
+from config import BEAM_WIDTH
 from trimesh import Trimesh
 from trimesh.intersections import slice_mesh_plane
 from bsp import BSP, Part

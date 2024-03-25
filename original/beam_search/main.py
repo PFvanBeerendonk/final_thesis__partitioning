@@ -1,11 +1,6 @@
-from config import (
-    INPUT_FILE_PATH,
-    OUTPUT_FOLDER,
-    BEAM_WIDTH,
-)
+from config import INPUT_FILE_PATH, OUTPUT_FOLDER
+
 import trimesh, os
-from trimesh.intersections import slice_mesh_plane
-from bsp import BSP
 from beam_search import beam_search
 
 
@@ -16,7 +11,6 @@ def main():
 
     mesh = trimesh.load_mesh(mesh_path)
     
-    print('AA', type(mesh))
     print('Starting beam search')
     beam_search(mesh)
 
