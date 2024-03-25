@@ -22,10 +22,10 @@ class Part:
     """
     def _update_fit(self):
         _, extents = oriented_bounds(self.mesh)
-        for i in range(3):
-            print(extents[i], PRINT_VOLUME[i])
-        
         self.fits_in_volume = all(extents[i] <= PRINT_VOLUME[i] for i in range(3))
+
+    def volume(self):
+        return self.mesh.volume
 
 
 class BSP:
@@ -34,6 +34,8 @@ class BSP:
     """
 
     def __init__(self, parts: list[Part]):
+        if len(parts) == 0:
+            raise Exception('Must have at least 1 part')
         self.parts = parts
 
     def score(self):
@@ -41,3 +43,8 @@ class BSP:
 
     def all_fit(self):
         return all(part.fits_in_volume for part in self.parts)
+
+    def get_largest_part(self) -> Part:
+        if len(self.parts) == 0:
+            raise Exception('Must have at least 1 part')
+        return max(self.parts, key=lambda x: x.volume())    

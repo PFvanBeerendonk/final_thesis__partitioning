@@ -14,12 +14,6 @@ class TestHighestRanked(TestCase):
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
 class TestAllAtGoal(TestCase):
-    def test_all_at_goal_empty(self):
-        bsp_set = [
-            BSP([])
-        ]
-        assert all_at_goal(bsp_set)
-
     def test_all_at_goal_fits(self):
         mesh = cylinder(radius=2, height=10, sections=100)
         bsp_set = [
