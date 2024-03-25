@@ -6,8 +6,12 @@ OUTPUT_FOLDER = '../../output'
 
 
 
-# Parameters
+### Parameters ###
+# Number of bsp's considered at one time
 BEAM_WIDTH = 4
+
+# Spacing of the uniform planes when cutting
+PLANE_SPACER = 25
 
 # Print Volume (w, h, d) (in mm)
 PRINT_VOLUME = (100, 100, 100)

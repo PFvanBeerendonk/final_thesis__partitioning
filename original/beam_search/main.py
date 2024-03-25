@@ -2,7 +2,7 @@ from config import INPUT_FILE_PATH, OUTPUT_FOLDER
 
 import trimesh, os
 from beam_search import beam_search
-
+from helpers import export_bsp
 
 def main():
     print('Loading File')
@@ -11,16 +11,17 @@ def main():
 
     mesh = trimesh.load_mesh(mesh_path)
     
-    # maybe validate the input mesh, to check for watertightness
-    
+    # TODO: maybe validate the input mesh, 
+    # - watertightness
+    # - is one part
+
+
     print('Starting beam search')
     bsp = beam_search(mesh)
     print('Finished beam search')
 
     print('Exporting Files of best Partition')
-    for i, part in enumerate(bsp.parts):
-        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}.stl')
-
+    export_bsp(bsp)
 
 if __name__ == '__main__':
     main()
