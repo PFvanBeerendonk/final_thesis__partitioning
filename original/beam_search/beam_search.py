@@ -20,10 +20,11 @@ def beam_search(object_mesh: Trimesh):
     while not all_at_goal(current_bsp_set):
         print(f'\n\nEvaluating cut {number_of_cuts+1}')
         new_bsp_set = []
-        for bsp_t in not_at_goal_set(current_bsp_set):
+        bsp_todo_set = not_at_goal_set(current_bsp_set)
+        for i, bsp_t in enumerate(bsp_todo_set):
             current_bsp_set.remove(bsp_t)
             largest_part = bsp_t.get_largest_part()
-            new_bsp_set += eval_cuts(bsp_t, largest_part)
+            new_bsp_set += eval_cuts(bsp_t, largest_part, i+1, len(bsp_todo_set))
         while len(current_bsp_set) < BEAM_WIDTH:
             best = highest_ranked(new_bsp_set)
             new_bsp_set.remove(best)
@@ -38,20 +39,21 @@ def beam_search(object_mesh: Trimesh):
 
     Requires: `part` is in `bsp_t.parts`
 '''
-def eval_cuts(bsp_t: BSP, part: Part) -> list[BSP]:
+def eval_cuts(bsp_t: BSP, part: Part, part_id: int, part_todo: int) -> list[BSP]:
     candidate_cuts = []
     # collect normals
     normals = uniform_normals
-    _report_eval_cut(0, len(normals))
+    _report_eval_cut(0, len(normals), part_id, part_todo)
     for i, n in enumerate(normals):
         if i % 10 == 0:
-            _report_eval_cut(i, len(normals))
+            _report_eval_cut(i, len(normals), part_id, part_todo)
         for j, p in enumerate(sample_origins(part, n)):
             candidate_cuts.append(bsp_t.cut_part(part, n, p))
 
 
     result_cuts = []
-    for c in candidate_cuts: #TODO: sorted
+    candidate_cuts.sort(key=lambda x: x.score())
+    for c in candidate_cuts:
         if sufficiently_different(c, result_cuts):
             result_cuts.append(c)
 
@@ -62,9 +64,9 @@ def eval_cuts(bsp_t: BSP, part: Part) -> list[BSP]:
     Prints a progress bar to show how close `progress` is to `target`
     i.e. how many normals have been evaluated
 '''
-def _report_eval_cut(progress, target):
+def _report_eval_cut(progress, target, part_i, part_todo):
     sys.stdout.write('\r')
     # the exact output you're looking for:
     progress_percentage = int(progress / target * 100)
-    sys.stdout.write("Evaluating Normals [%-100s] %d%%" % ('='*progress_percentage, progress_percentage))
+    sys.stdout.write(f"Evaluating Normals for part {part_i}/{part_todo} [%-100s] %d%%" % ('='*progress_percentage, progress_percentage))
     sys.stdout.flush()

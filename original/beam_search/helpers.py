@@ -50,6 +50,7 @@ def sufficiently_different(bsp: BSP, bsp_set: list[BSP]) -> bool:
 
 '''
     return origins for planes with `normal` ranging over `part`
+    Returned normals should cut `part` into at least 2 parts
 '''
 def sample_origins(part: Part, normal) -> list[(int, int, int)]:
     projection = part.mesh.vertices @ normal

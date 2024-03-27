@@ -3,7 +3,9 @@ from unittest import TestCase
 
 from trimesh.creation import cylinder
 
-from beam_search.helpers import highest_ranked, all_at_goal, not_at_goal_set
+from beam_search.helpers import (
+    highest_ranked, all_at_goal, not_at_goal_set,
+)
 from beam_search.bsp import BSP, Part
 
 
