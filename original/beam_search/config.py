@@ -16,3 +16,11 @@ PLANE_SPACER = 25
 # Print Volume (w, h, d) (in mm)
 PRINT_VOLUME = (100, 100, 100)
 
+### Objective Function Weights ###
+PART_WEIGHT = 1
+UTIL_WEIGHT = 0.05
+CONNECTOR_WEIGHT = 1
+FRAGILITY_WEIGHT = 1
+SEAM_WEIGHT = 0.1
+SYMMETRY_WEIGHT = 0.25
+
