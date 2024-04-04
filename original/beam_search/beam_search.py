@@ -28,10 +28,10 @@ def beam_search(object_mesh: Trimesh):
         while len(current_bsp_set) < BEAM_WIDTH:
             best = highest_ranked(new_bsp_set)
             new_bsp_set.remove(best)
-            print(best.parts)
             current_bsp_set.append(best)
         number_of_cuts += 1
 
+    print('\n')
     return highest_ranked(current_bsp_set)
 
 '''
@@ -68,5 +68,5 @@ def _report_eval_cut(progress, target, part_i, part_todo):
     sys.stdout.write('\r')
     # the exact output you're looking for:
     progress_percentage = int(progress / target * 100)
-    sys.stdout.write(f"Evaluating Normals for part {part_i}/{part_todo} [%-100s] %d%%" % ('='*progress_percentage, progress_percentage))
+    sys.stdout.write(f"Evaluating Normals for bsp {part_i}/{part_todo} [%-100s] %d%%" % ('='*progress_percentage, progress_percentage))
     sys.stdout.flush()
