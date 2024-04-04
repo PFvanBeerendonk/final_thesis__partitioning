@@ -1,4 +1,4 @@
-from config import INPUT_FILE_PATH, OUTPUT_FOLDER
+from config import INPUT_FILE_PATH
 
 import trimesh, os
 from beam_search import beam_search

@@ -25,6 +25,8 @@ def beam_search(object_mesh: Trimesh):
             current_bsp_set.remove(bsp_t)
             largest_part = bsp_t.get_largest_part()
             new_bsp_set += eval_cuts(bsp_t, largest_part, i+1, len(bsp_todo_set))
+
+            
         while len(current_bsp_set) < BEAM_WIDTH:
             best = highest_ranked(new_bsp_set)
             new_bsp_set.remove(best)
