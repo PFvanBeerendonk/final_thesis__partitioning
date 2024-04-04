@@ -1,5 +1,6 @@
 from unittest.mock import patch
 from unittest import TestCase
+import pytest
 
 from trimesh.creation import cylinder
 
@@ -9,9 +10,23 @@ from beam_search.helpers import (
 from beam_search.bsp import BSP, Part
 
 
+@patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
 class TestHighestRanked(TestCase):
     def test_highest_ranked(self):
-        pass
+        bsp_small = BSP([
+            Part(cylinder(radius=2, height=9, sections=100))
+        ])
+        bsp_large = BSP([
+            Part(cylinder(radius=2000, height=900, sections=100)),
+            Part(cylinder(radius=2, height=9, sections=100)),
+        ])
+
+        assert bsp_large.score() > bsp_small.score()
+        assert highest_ranked([bsp_small, bsp_large]) == bsp_small
+
+    def test_empty(self):
+        with pytest.raises(Exception) as e:
+            highest_ranked([])
 
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
@@ -77,7 +92,6 @@ class TestNotAtGoalSet(TestCase):
         
         bsp_set = [ b0, b1 ]
         assert not_at_goal_set(bsp_set) == [ b1 ]
-
 
     def test_fully(self):
         mesh = cylinder(radius=2, height=11, sections=100)

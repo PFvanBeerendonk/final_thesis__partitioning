@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import os
 import numpy as np
+from datetime import datetime
 
 from trimesh.creation import icosphere
 
@@ -39,7 +40,7 @@ def not_at_goal_set(bsp_set: list[BSP]) -> list[BSP]:
     Returns a set of "uniformly spaced" normals.
     
     Original paper used: vertices of thrice-subdivided regular octahedron.
-    We will, for now, used vertices of an thrice-subdivided icosphere
+    We will, for now, use vertices of an twice-subdivided icosphere
 '''
 def get_uniform_normals():
     return icosphere(subdivisions=2, radius=1).vertices
@@ -65,6 +66,7 @@ def export_part(part: Part):
     part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/intermediate.stl')
 
 def export_bsp(bsp: BSP):
+    now = datetime.now()
     current_location = os.path.dirname(__file__)
     for i, part in enumerate(bsp.parts):
-        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}.stl')
+        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
