@@ -29,6 +29,23 @@ class TestCut(TestCase):
 
         assert len(result_parts) == 3
         
+    def test_find_connected(self):
+        origin = tracked_array([ 0, 0, 4])
+        normal = tracked_array([0, 0, 1])
+        slice2d = self.part.mesh.section(
+            plane_normal=normal,
+            plane_origin=origin,
+        )
+        face_indeces = slice2d.metadata['face_index']
+
+        assert len(face_indeces) == 16
+        
+        components = list(self.part._find_connected(face_indeces))
+        assert len(components) == 2
+
+        for id in face_indeces:
+            assert id in components[0] or id in components[1]
+
     def test_horizontal_cut_improved(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
