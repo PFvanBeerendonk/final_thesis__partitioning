@@ -37,12 +37,14 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
         # cut
         new_mesh = slice_mesh_plane(
             mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
-            face_index=face_index, 
+            face_index=face_index,
         )
-        # meshes = new_mesh.split()
-
+        
         from helpers import export_part
         export_part(Part(new_mesh), face_index)
+        meshes = new_mesh.split()
+
+
         
         parts = []
         # has exactly 2 parts?
@@ -122,7 +124,7 @@ def slice_mesh_plane(
         plane_origin.reshape((-1, 3)), plane_normal.reshape((-1, 3))
     ):
         # save the new vertices and faces
-        vertices, faces, created_vertices = slice_faces_plane(
+        vertices, faces = slice_faces_plane(
             vertices=vertices,
             faces=faces,
             plane_normal=normal,
@@ -130,10 +132,14 @@ def slice_mesh_plane(
             cached_dots=cached_dots,
             face_index=face_index,
         )
-        # Start Capping, but only on `created_vertices`
+
+        # verts_on_plane should be capped
+
+        # Start Capping
         # start by deduplicating vertices again
         unique, inverse = grouping.unique_rows(vertices)
-        vertices = vertices[unique]
+        vertices = vertices[unique]  #THIS REMOVES VERTS, make work!
+        print('in', len(vertices))
         # will collect additional faces
         f = inverse[faces]
         # remove degenerate faces by checking to make sure
@@ -169,8 +175,9 @@ def slice_mesh_plane(
             faces.append(vid[fn])
         faces = np.vstack(faces)
 
-    # return the sliced mesh
-    return Trimesh(vertices=vertices, faces=faces, **kwargs)
+    print('post', len(vertices))
+    # return the sliced mesh, do NOT delete duplicate vertices (process=False)
+    return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
 
 
 def slice_faces_plane(
@@ -287,6 +294,7 @@ def slice_faces_plane(
     dist = np.divide(num, denom)
     # intersection points for each segment
     int_points = np.einsum("ij,ijk->ijk", dist, d) + o
+    int_points_outside = np.einsum("ij,ijk->ijk", dist, d) + o
 
     # Initialize the array of new vertices with the current vertices
     new_vertices = vertices
@@ -374,7 +382,7 @@ def slice_faces_plane(
     cut_signs_quad = signs[np.logical_and(onedge, signs_sum >= 0)]
     cut_signs_tri = signs[np.logical_and(onedge, signs_sum < 0)]
     
-    quad_int_points = int_points[(signs_sum >= 0)[onedge], :, :]
+    quad_int_points = int_points_outside[(signs_sum >= 0)[onedge], :, :]
     num_quads = len(quad_int_points)
     if num_quads > 0:
         # Extract the vertex on the outside of the plane, then get the vertices
@@ -411,7 +419,7 @@ def slice_faces_plane(
     
     # Handle the case where a new triangle is formed by the intersection
     # First, extract the intersection points belonging to a new triangle
-    tri_int_points = int_points[(signs_sum < 0)[onedge], :, :]
+    tri_int_points = int_points_outside[(signs_sum < 0)[onedge], :, :]
     num_tris = len(tri_int_points)
     if num_tris > 0:
         # Extract the single vertex for each triangle inside the plane and get the
@@ -452,7 +460,5 @@ def slice_faces_plane(
     final_vert = new_vertices[unique]
     final_face = inverse.reshape((-1, 3))
 
-    created_vertices = np.append(new_quad_vertices, new_tri_vertices, axis=0)
 
-    # TODO: also return those verts that are on_plane and should be capped
-    return final_vert, final_face, created_vertices
+    return final_vert, final_face
