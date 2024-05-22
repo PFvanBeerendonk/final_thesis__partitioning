@@ -61,13 +61,25 @@ def sample_origins(part: Part, normal) -> list[(int, int, int)]:
 
 
 # Export helpers
-def export_part(part: Part):
+def export_part(part: Part, val=''):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
-    part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/intermediate--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+    part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/intermediate{val}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
 def export_bsp(bsp: BSP):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
     for i, part in enumerate(bsp.parts):
         part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+
+
+# mathematics
+
+'''
+    Given list s, return the powerset of s. But exclude the emptyset
+'''
+def powerset_no_emptyset(s: list[any]) -> list[list[any]]:
+    x = sum(1 for _ in s)
+    masks = [1 << i for i in range(x)]
+    for i in range(1, 1 << x):
+        yield [ss for mask, ss in zip(masks, s) if i & mask]

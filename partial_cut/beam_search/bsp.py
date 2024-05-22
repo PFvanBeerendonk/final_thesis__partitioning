@@ -2,6 +2,7 @@ from typing import Self
 import numpy as np
 import math
 
+from helpers import powerset_no_emptyset
 from config import (
     PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
     CONNECTOR_CONSTANT
@@ -9,6 +10,9 @@ from config import (
 
 from trimesh import Trimesh
 from trimesh.bounds import oriented_bounds
+
+from trimesh.graph import face_adjacency
+import networkx as nx
 
 # Maintain knowledge about parts
 class Part:
@@ -21,16 +25,20 @@ class Part:
     '''
         Returns all parts after cutting self given a cut plane.
     '''
-    def cut(self, plane_normal, plane_origin) -> list[Self]:
-        dot = np.dot(plane_normal, (self.mesh.vertices - plane_origin).T)[self.mesh.faces]
+    def cut(self, plane_normal, plane_origin, face_index=None, cap=True) -> list[Self]:
+        if face_index:
+            faces = [self.mesh.faces[id] for id in face_index]
+        else:
+            faces = self.mesh.faces
+        dot = np.dot(plane_normal, (self.mesh.vertices - plane_origin).T)[faces]
 
         s = self.mesh.slice_plane(plane_normal=plane_normal,
-            plane_origin=plane_origin, cap=True,
-            cached_dots=dot)
+            plane_origin=plane_origin, cap=cap,
+             face_index=face_index)
         dot *= -1
         sa = self.mesh.slice_plane(plane_normal=-plane_normal,
-            plane_origin=plane_origin, cap=True,
-            cached_dots=dot)
+            plane_origin=plane_origin, cap=cap,
+            face_index=face_index)
 
         # temporary hack, should get fixed: https://github.com/mikedh/trimesh/issues/2203
         
@@ -43,6 +51,64 @@ class Part:
             sa_meshes = [sa]
 
         return [Part(p) for p in s_meshes + sa_meshes]
+
+
+    '''
+        Given a set of face_ids, and set of faces
+        Return C s.t.
+        U F \in C F = ids AND
+        ∩ F \in C F = []  AND
+        ∀ F \in C: i, j \in F <==> faces[i] ∩ faces[j] != []
+
+        In other words, the result is a subdivision of ids, and if 2 face_ids are in the same subset, they are connected
+    '''
+    def _find_connected(self, ids: list[int]) -> list[list[int]]:
+        faces = [self.mesh.faces[i] for i in ids]
+
+        adjacent_faces = face_adjacency(faces)
+        graph = nx.Graph()
+        graph.add_edges_from(adjacent_faces)
+        return nx.connected_components(graph)
+
+    '''
+        Cut self.mesh into exactly 2 parts, based on a plane
+
+        @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
+    '''
+    def twin_cut(self, plane_normal, plane_origin) -> list[list[Self]]:
+        # find the list of indeces of faces on the plane
+        slice2d = self.mesh.section(
+            plane_normal=plane_normal,
+            plane_origin=plane_origin,
+        )
+        face_indeces = slice2d.metadata['face_index']
+
+        # determine which faces are connected
+        connected_components = list(self._find_connected(face_indeces))
+
+        out_list = []
+        for components in powerset_no_emptyset(connected_components):
+            face_index = [item for c in components for item in c]
+
+            from helpers import export_part
+            export_part(
+                Part(mesh=Trimesh(vertices=self.mesh.vertices, faces=[self.mesh.faces[f] for f in face_index])),
+                face_index
+            )
+
+            print('\n'*2, 'face_index', face_index)
+            # cut
+            parts = self.cut(plane_normal, plane_origin, face_index, cap=False)
+            
+            # has exactly 2 parts?
+            if len(parts) == 2:
+                
+                # Trimesh has not implemented `cap` in combination with `face_index`. So we cap ourselves 
+                # TODO
+                out_list.append(parts)
+
+
+        return out_list
 
 
     """

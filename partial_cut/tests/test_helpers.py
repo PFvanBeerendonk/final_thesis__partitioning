@@ -5,7 +5,7 @@ import pytest
 from trimesh.creation import cylinder
 
 from beam_search.helpers import (
-    highest_ranked, all_at_goal, not_at_goal_set,
+    highest_ranked, all_at_goal, not_at_goal_set, powerset_no_emptyset
 )
 from beam_search.bsp import BSP, Part
 
@@ -111,3 +111,15 @@ class TestNotAtGoalSet(TestCase):
         
         bsp_set = [ b0, b1 ]
         assert not_at_goal_set(bsp_set) == bsp_set
+
+
+class TestPowersetNoEmptyset(TestCase):
+    def test_list(self):
+        out = powerset_no_emptyset([1,2])
+        assert list(out) == [[1], [2], [1,2]]
+
+    def test_list_of_sets(self):
+        out = powerset_no_emptyset(
+            [{1},{2,4}]
+        )
+        assert list(out) == [[{1}], [{2,4}], [{1},{2,4}]]
