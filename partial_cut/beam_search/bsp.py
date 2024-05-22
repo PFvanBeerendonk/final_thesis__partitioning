@@ -68,7 +68,10 @@ class Part:
         adjacent_faces = face_adjacency(faces)
         graph = nx.Graph()
         graph.add_edges_from(adjacent_faces)
-        return nx.connected_components(graph)
+
+        components = nx.connected_components(graph)
+        return [ [ids[c] for c in c_list] for c_list in components ] 
+
 
     '''
         Cut self.mesh into exactly 2 parts, based on a plane
