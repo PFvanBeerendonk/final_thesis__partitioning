@@ -9,12 +9,14 @@ from bsp import Part
 
 
 def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
-        faces = [mesh.faces[i] for i in ids]
+    faces = [mesh.faces[i] for i in ids]
 
-        adjacent_faces = face_adjacency(faces)
-        graph = nx.Graph()
-        graph.add_edges_from(adjacent_faces)
-        return nx.connected_components(graph)
+    adjacent_faces = face_adjacency(faces)
+    graph = nx.Graph()
+    graph.add_edges_from(adjacent_faces)
+
+    components = nx.connected_components(graph)
+    return [ [ids[c] for c in c_list] for c_list in components ] 
 
 
 def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
@@ -23,27 +25,35 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
         plane_origin=plane_origin,
     )
     face_indeces = slice2d.metadata['face_index']
+    print(face_indeces)
 
     # determine which faces are connected
-    connected_components = list(_find_connected(face_indeces))
+    connected_components = list(_find_connected(mesh, face_indeces))
+
+    print(connected_components)
+    raise Exception('safd')
 
     out_list = []
     for components in powerset_no_emptyset(connected_components):
         face_index = [item for c in components for item in c]
-
+        print(components, face_index)
         from helpers import export_part
         export_part(
             Part(mesh=Trimesh(vertices=mesh.vertices, faces=[mesh.faces[f] for f in face_index])),
             face_index
         )
+        continue
 
         print('\n'*2, 'face_index', face_index)
         # cut
-        slice_mesh_plane(
+        mesh = slice_mesh_plane(
             mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
             face_index=face_index, cap=False, 
         )
-        parts = []
+        meshes = mesh.split()
+
+
+        parts = [Part(p) for p in meshes]
         
         
         # has exactly 2 parts?
@@ -53,23 +63,10 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
             # TODO
             out_list.append(parts)
 
-
+    raise Exception('uw')
     return out_list
 
-
-def cut(mesh, plane_normal, plane_origin, face_index=None, cap=True) -> list[Part]:
-
-    s = slice_mesh_plane(mesh, plane_normal=plane_normal,
-        plane_origin=plane_origin, cap=cap, face_index=face_index,
-    )
-
-    # temporary hack, should get fixed: https://github.com/mikedh/trimesh/issues/2203
-    
-    # split mesh into disjoint parts
-    return s
-
-
-
+# Adapted from Trimesh
 
 from trimesh import grouping, geometry, util
 from trimesh import transformations as tf
@@ -81,7 +78,6 @@ from trimesh.base import Trimesh
 from trimesh.creation import triangulate_polygon
 from trimesh.path import polygons
 
-# Adapted from Trimesh
 def slice_mesh_plane(
     mesh,
     plane_normal,
@@ -259,6 +255,7 @@ def slice_faces_plane(
     onedge = np.logical_and(signs_asum >= 2, np.abs(signs_sum) <= 1)
 
     inside = signs_sum == -signs_asum
+    outside = signs_sum == signs_asum
 
     # for any faces that lie exactly on-the-plane
     # we want to only include them if their normal
@@ -291,27 +288,8 @@ def slice_faces_plane(
     cut_signs_tri = signs[np.logical_and(onedge, signs_sum >= 0)]
 
     # If no faces to cut, the surface is not in contact with this plane.
-    # Thus, return a mesh with only the inside faces
     if len(cut_faces_quad) + len(cut_faces_tri) == 0:
-        if len(new_faces) == 0:
-            # if no new faces at all return empty arrays
-            empty = (
-                np.zeros((0, 3), dtype=np.float64),
-                np.zeros((0, 3), dtype=np.int64),
-            )
-            return empty
-
-        # find the unique indices in the new faces
-        # using an integer-only unique function
-        unique, inverse = grouping.unique_bincount(
-            new_faces.reshape(-1), minlength=len(vertices), return_inverse=True
-        )
-
-        # use the unique indices for our final vertices and faces
-        final_vert = vertices[unique]
-        final_face = inverse.reshape((-1, 3))
-
-        return final_vert, final_face
+        raise Exception("Empty cut")
 
     # Extract the intersections of each triangle's edges with the plane
     o = cut_triangles  # origins
@@ -394,6 +372,10 @@ def slice_faces_plane(
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
+
+    #### Now let us hande the "outside" faces
+    outside_faces = faces[outside]
+
 
     # find the unique indices in the new faces
     # using an integer-only unique function

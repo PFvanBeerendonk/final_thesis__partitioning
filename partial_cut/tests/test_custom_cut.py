@@ -7,6 +7,7 @@ from trimesh.creation import cylinder
 
 from beam_search.bsp import BSP, Part
 
+from beam_search.twin_cut import twin_cut, _find_connected
 
 from beam_search.helpers import export_part
 
@@ -28,13 +29,30 @@ class TestCut(TestCase):
             assert p.mesh.is_watertight
 
         assert len(result_parts) == 3
+
+    def test_find_connected(self):
+        origin = tracked_array([ 0, 0, 4])
+        normal = tracked_array([0, 0, 1])
+        slice2d = self.part.mesh.section(
+            plane_normal=normal,
+            plane_origin=origin,
+        )
+        face_indeces = slice2d.metadata['face_index']
+
+        assert len(face_indeces) == 16
         
+        components = list(_find_connected(self.part.mesh, face_indeces))
+        assert len(components) == 2
+
+        for id in face_indeces:
+            assert id in components[0] or id in components[1]
+
     def test_horizontal_cut_improved(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
 
 
-        result_parts = self.part.twin_cut(normal, origin)
+        result_parts = twin_cut(self.part.mesh, normal, origin)
         
         # 2 options when cutting a U above the bottom
         # assert len(result_parts) == 2

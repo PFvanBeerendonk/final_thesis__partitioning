@@ -7,7 +7,6 @@ from config import (
     PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
     CONNECTOR_CONSTANT
 )
-from twin_cut import twin_cut
 
 from trimesh import Trimesh
 from trimesh.bounds import oriented_bounds
@@ -77,6 +76,9 @@ class Part:
         @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
     '''
     def twin_cut(self, plane_normal, plane_origin) -> list[list[Self]]:
+        # twin_cut(self.mesh, plane_normal, plane_origin)
+        
+        return
         # find the list of indeces of faces on the plane
         slice2d = self.mesh.section(
             plane_normal=plane_normal,
@@ -99,8 +101,10 @@ class Part:
 
             print('\n'*2, 'face_index', face_index)
             # cut
-            parts = self.cut(plane_normal, plane_origin, face_index, cap=False)
+            res = twin_cut(self.mesh, plane_normal, plane_origin, face_index, cap=False)
             
+
+            parts = []
             # has exactly 2 parts?
             if len(parts) == 2:
                 
