@@ -7,6 +7,7 @@ from config import (
     PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
     CONNECTOR_CONSTANT
 )
+from twin_cut import twin_cut
 
 from trimesh import Trimesh
 from trimesh.bounds import oriented_bounds
