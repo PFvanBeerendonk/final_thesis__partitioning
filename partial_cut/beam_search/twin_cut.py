@@ -7,6 +7,7 @@ import networkx as nx
 from helpers import powerset_no_emptyset
 from bsp import Part
 
+from helpers import export_part
 
 def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
     faces = [mesh.faces[i] for i in ids]
@@ -40,21 +41,19 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
             face_index=face_index,
         )
         
-        from helpers import export_part
-        export_part(Part(new_mesh), face_index)
-        meshes = new_mesh.split()
+        meshes = new_mesh.split(only_watertight=False)
 
+        # for i, m in enumerate(meshes):
+        #     export_part(Part(m), str(i)+str(face_index))
+        print(len(meshes))
 
-        
-        parts = []
-        # has exactly 2 parts?
-        if len(parts) == 2:
-            
-            # Trimesh has not implemented `cap` in combination with `face_index`. So we cap ourselves 
-            # TODO
-            out_list.append(parts)
+        raise Exception('no')
+    
+        # If exactly 2 meshes are returned, cap on plane
+        if len(meshes) == 2:
+            capped_meshes = meshes #TODO: cap
+            out_list.append(capped_meshes)
 
-    raise Exception('uw')
     return out_list
 
 # Adapted from Trimesh
@@ -73,8 +72,6 @@ def slice_mesh_plane(
     mesh,
     plane_normal,
     plane_origin,
-    cached_dots=None,
-    engine=None,
     face_index=None,
     **kwargs,
 ):
@@ -97,11 +94,6 @@ def slice_mesh_plane(
       Point on plane to intersect with mesh
     cap : bool
       If True, cap the result with a triangulated polygon
-    cached_dots : (n, 3) float
-      If an external function has stored dot
-      products pass them here to avoid recomputing
-    engine : None or str
-      Triangulation engine passed to `triangulate_polygon`
     kwargs : dict
       Passed to the newly created sliced mesh
 
@@ -124,68 +116,73 @@ def slice_mesh_plane(
         plane_origin.reshape((-1, 3)), plane_normal.reshape((-1, 3))
     ):
         # save the new vertices and faces
-        vertices, faces = slice_faces_plane(
+        vertices, faces = slice_faces_plane_double(
             vertices=vertices,
             faces=faces,
             plane_normal=normal,
             plane_origin=origin,
-            cached_dots=cached_dots,
             face_index=face_index,
         )
 
-        # verts_on_plane should be capped
-
-        # Start Capping
-        # start by deduplicating vertices again
-        unique, inverse = grouping.unique_rows(vertices)
-        vertices = vertices[unique]  #THIS REMOVES VERTS, make work!
-        print('in', len(vertices))
-        # will collect additional faces
-        f = inverse[faces]
-        # remove degenerate faces by checking to make sure
-        # that each face has three unique indices
-        f = f[(f[:, :1] != f[:, 1:]).all(axis=1)]
-        # transform to the cap plane
-        to_2D = geometry.plane_transform(origin=origin, normal=-normal)
-        to_3D = np.linalg.inv(to_2D)
-
-        vertices_2D = tf.transform_points(vertices, to_2D)
-        edges = geometry.faces_to_edges(f)
-        edges.sort(axis=1)
-
-        on_plane = np.abs(vertices_2D[:, 2]) < 1e-8
-        edges = edges[on_plane[edges].all(axis=1)]
-        edges = edges[edges[:, 0] != edges[:, 1]]
-        
-        unique_edge = grouping.group_rows(edges, require_count=1)
-        if len(unique) < 3:
-            continue
-
-        tree = cKDTree(vertices)
-        # collect new faces
-        faces = [f]
-        for p in polygons.edges_to_polygons(edges[unique_edge], vertices_2D[:, :2]):
-            vn, fn = triangulate_polygon(p, engine=engine)
-            # collect the original index for the new vertices
-            vn3 = tf.transform_points(util.stack_3D(vn), to_3D)
-            distance, vid = tree.query(vn3)
-            if distance.max() > 1e-8:
-                util.log.debug("triangulate may have inserted vertex!")
-            # triangulation should not have inserted vertices
-            faces.append(vid[fn])
-        faces = np.vstack(faces)
-
-    print('post', len(vertices))
     # return the sliced mesh, do NOT delete duplicate vertices (process=False)
     return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
 
+def cap_vertices(mesh, vert_indices, origin, normal):
+    vertices = []
+    faces = []
+    
+    print('pre', len(vertices))
 
-def slice_faces_plane(
+    # verts_on_plane should be capped
+
+
+    # Start Capping
+    # start by deduplicating vertices again
+    unique, inverse = grouping.unique_rows(vertices)
+    # vertices = vertices[unique]  #THIS REMOVES VERTS, make work!
+    # will collect additional faces
+    f = inverse[faces]
+    # remove degenerate faces by checking to make sure
+    # that each face has three unique indices
+    f = f[(f[:, :1] != f[:, 1:]).all(axis=1)]
+    # transform to the cap plane
+    to_2D = geometry.plane_transform(origin=origin, normal=-normal)
+    to_3D = np.linalg.inv(to_2D)
+
+    vertices_2D = tf.transform_points(vertices, to_2D)
+    edges = geometry.faces_to_edges(f)
+    edges.sort(axis=1)
+
+    on_plane = np.abs(vertices_2D[:, 2]) < 1e-8
+    edges = edges[on_plane[edges].all(axis=1)]
+    edges = edges[edges[:, 0] != edges[:, 1]]
+    
+    unique_edge = grouping.group_rows(edges, require_count=1)
+    if len(unique) < 3:
+        return mesh
+
+    tree = cKDTree(vertices)
+    # collect new faces
+    faces = [f]
+    for p in polygons.edges_to_polygons(edges[unique_edge], vertices_2D[:, :2]):
+        vn, fn = triangulate_polygon(p)
+        # collect the original index for the new vertices
+        vn3 = tf.transform_points(util.stack_3D(vn), to_3D)
+        distance, vid = tree.query(vn3)
+        if distance.max() > 1e-8:
+            util.log.debug("triangulate may have inserted vertex!")
+        # triangulation should not have inserted vertices
+        faces.append(vid[fn])
+    faces = np.vstack(faces)
+
+    print('post', len(vertices))
+    return mesh
+
+def slice_faces_plane_double(
     vertices,
     faces,
     plane_normal,
     plane_origin,
-    cached_dots=None,
     face_index=None,
 ):
     """
@@ -221,13 +218,10 @@ def slice_faces_plane(
     if len(vertices) == 0:
         return vertices, faces
 
-    if cached_dots is not None:
-        dots = cached_dots
-    else:
-        # dot product of each vertex with the plane normal indexed by face
-        # so for each face the dot product of each vertex is a row
-        # shape is the same as faces (n,3)
-        dots = np.dot(vertices - plane_origin, plane_normal)
+    # dot product of each vertex with the plane normal indexed by face
+    # so for each face the dot product of each vertex is a row
+    # shape is the same as faces (n,3)
+    dots = np.dot(vertices - plane_origin, plane_normal)
 
     # Find vertex orientations w.r.t. faces for all triangles:
     #  -1 -> vertex "inside" plane (positive normal direction)
@@ -308,7 +302,7 @@ def slice_faces_plane(
     # If no faces to cut, the surface is not in contact with this plane.
     if len(cut_faces_quad) + len(cut_faces_tri) == 0:
         raise Exception("Empty cut")
-    
+
     # Handle the case where a new quad is formed by the intersection
     # First, extract the intersection points belonging to a new quad
     quad_int_points = int_points[(signs_sum < 0)[onedge], :, :]
@@ -371,6 +365,9 @@ def slice_faces_plane(
             np.stack((tri_int_inds.T, ((tri_int_inds + 2) % 3).T), axis=1),
             :,
         ].reshape(2 * num_tris, 3)
+
+        # replace face-vertex indices with points already created in new_quad_vertices
+        new_tri_faces = replace_duplicate_vertices(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
 
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
@@ -444,6 +441,9 @@ def slice_faces_plane(
             :,
         ].reshape(2 * num_tris, 3)
 
+        # replace face-vertex indices with points already created in new_quad_vertices
+        new_tri_faces = replace_duplicate_vertices(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
+
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
@@ -460,5 +460,48 @@ def slice_faces_plane(
     final_vert = new_vertices[unique]
     final_face = inverse.reshape((-1, 3))
 
+    # TODO: remove vertices that are not used
 
     return final_vert, final_face
+
+# list based stuff
+"""
+Replace index `i` of some face in new_tri_faces if
+    `i - offset` in new_tri_vertices equals some vertex in new_quad_vertices at index `j`
+then replace `i` with `offset - len(new_quad_vertices)`
+
+Parameters
+---------
+offset : int
+    index offset of new_tri_faces to 
+new_tri_faces : (n, 3) int
+    Faces of source mesh to slice
+new_quad_vertices : (n, 3) float
+    list of 
+new_tri_vertices :  (n, 3) float
+    Point on plane to intersect with mesh
+
+Returns
+----------
+new_tri_faces : (n, 3) int
+    Vertices of sliced mesh
+"""
+def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri_vertices):
+    global_offset = offset - len(new_quad_vertices)
+    for i, f in enumerate(new_tri_faces):
+        # skip f[0], this one is not onplane
+        id_1 = f[1] - offset
+        id_2 = f[2] - offset
+        try:
+            # if vertex already in quads, replace id
+            new_tri_faces[i][1] = np.where(np.all(new_quad_vertices == new_tri_vertices[id_1],axis=1))[0] + global_offset
+        except ValueError:
+            # no such vertex found
+            pass
+
+        try:
+            new_tri_faces[i][2] = np.where(np.all(new_quad_vertices == new_tri_vertices[id_2],axis=1))[0] + global_offset
+        except ValueError:
+            # no such vertex found
+            pass
+    return new_tri_faces
