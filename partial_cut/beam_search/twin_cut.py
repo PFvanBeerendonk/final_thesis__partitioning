@@ -42,16 +42,19 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
         )
         
         meshes = new_mesh.split(only_watertight=False)
-
-        # for i, m in enumerate(meshes):
-        #     export_part(Part(m), str(i)+str(face_index))
-        print(len(meshes))
-
-        raise Exception('no')
     
+        print('LEN',len(meshes))
+        for i, m in enumerate(meshes):
+            export_part(Part(m), str(i)+str(face_index))
+
         # If exactly 2 meshes are returned, cap on plane
         if len(meshes) == 2:
-            capped_meshes = meshes #TODO: cap
+            export_part(Part(meshes[0]), 'a' + str(face_index))
+            export_part(Part(meshes[1]), 'b' + str(face_index))
+            capped_meshes = [
+                cap_vertices(meshes[0], plane_origin, plane_normal), 
+                cap_vertices(meshes[1], plane_origin, plane_normal)
+            ]
             out_list.append(capped_meshes)
 
     return out_list
@@ -127,11 +130,12 @@ def slice_mesh_plane(
     # return the sliced mesh, do NOT delete duplicate vertices (process=False)
     return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
 
-def cap_vertices(mesh, vert_indices, origin, normal):
-    vertices = []
-    faces = []
-    
-    print('pre', len(vertices))
+def cap_vertices(mesh, origin, normal):
+    # vertices = mesh.vertices
+    # faces = origin.faces
+
+    # print('pre', len(vertices))
+    return mesh # TODO: fix
 
     # verts_on_plane should be capped
 
@@ -465,43 +469,49 @@ def slice_faces_plane_double(
     return final_vert, final_face
 
 # list based stuff
-"""
-Replace index `i` of some face in new_tri_faces if
-    `i - offset` in new_tri_vertices equals some vertex in new_quad_vertices at index `j`
-then replace `i` with `offset - len(new_quad_vertices)`
-
-Parameters
----------
-offset : int
-    index offset of new_tri_faces to 
-new_tri_faces : (n, 3) int
-    Faces of source mesh to slice
-new_quad_vertices : (n, 3) float
-    list of 
-new_tri_vertices :  (n, 3) float
-    Point on plane to intersect with mesh
-
-Returns
-----------
-new_tri_faces : (n, 3) int
-    Vertices of sliced mesh
-"""
 def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri_vertices):
+    """
+    Replace index `i` of some face in new_tri_faces if
+        `i - offset` in new_tri_vertices equals some vertex in new_quad_vertices at index `j`
+    then replace `i` with `j + offset - len(new_quad_vertices)`
+
+    Parameters
+    ---------
+    offset : int
+        index offset of new_tri_faces to 
+    new_tri_faces : (n, 3) int
+        Faces of source mesh to slice
+    new_quad_vertices : (n, 3) float : TrimeshTrackedArray
+        List of vertices
+    new_tri_vertices :  (n, 3) float : TrimeshTrackedArray
+        List of vertices
+
+    Returns
+    ----------
+    new_tri_faces : (n, 3) int
+        Vertices of sliced mesh
+    """
+
     global_offset = offset - len(new_quad_vertices)
+
     for i, f in enumerate(new_tri_faces):
-        # skip f[0], this one is not onplane
-        id_1 = f[1] - offset
-        id_2 = f[2] - offset
         try:
             # if vertex already in quads, replace id
-            new_tri_faces[i][1] = np.where(np.all(new_quad_vertices == new_tri_vertices[id_1],axis=1))[0] + global_offset
-        except ValueError:
+            new_tri_faces[i][0] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[0] - offset],axis=1))[0] + global_offset
+        except (ValueError, IndexError):
             # no such vertex found
             pass
 
         try:
-            new_tri_faces[i][2] = np.where(np.all(new_quad_vertices == new_tri_vertices[id_2],axis=1))[0] + global_offset
-        except ValueError:
+            # if vertex already in quads, replace id
+            new_tri_faces[i][1] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[1] - offset],axis=1))[0] + global_offset
+        except (ValueError, IndexError):
+            # no such vertex found
+            pass
+
+        try:
+            new_tri_faces[i][2] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[2] - offset], axis=1))[0] + global_offset
+        except (ValueError, IndexError) as e:
             # no such vertex found
             pass
     return new_tri_faces
