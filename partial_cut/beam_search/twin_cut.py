@@ -44,8 +44,12 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
         meshes = new_mesh.split(only_watertight=False)
     
         print('LEN',len(meshes))
-        for i, m in enumerate(meshes):
-            export_part(Part(m), str(i)+str(face_index))
+
+
+        if len(meshes) > 2:
+            raise Exception('no')
+        # for i, m in enumerate(meshes):
+        #     export_part(Part(m), str(i)+str(face_index))
 
         # If exactly 2 meshes are returned, cap on plane
         if len(meshes) == 2:
@@ -478,33 +482,33 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
     Parameters
     ---------
     offset : int
-        index offset of new_tri_faces to 
-    new_tri_faces : (n, 3) int
+        index offset of new_vertices, to correct index
+        NOTE: new_vertices === OLD ++ new_quad_vertices
+    new_tri_faces : (n, 3) int : np.ndarray
         Faces of source mesh to slice
-    new_quad_vertices : (n, 3) float : TrimeshTrackedArray
+    new_quad_vertices : (n, 3) float : TrimeshTrackedArray of TrimeshTrackedArrays
         List of vertices
-    new_tri_vertices :  (n, 3) float : TrimeshTrackedArray
+    new_tri_vertices : (n, 3) float : TrimeshTrackedArray of TrimeshTrackedArrays
         List of vertices
 
     Returns
     ----------
     new_tri_faces : (n, 3) int
-        Vertices of sliced mesh
+        Faces with duplicates from new_tri_vertices indexed from new_quad_vertices instead
     """
-
     global_offset = offset - len(new_quad_vertices)
 
     for i, f in enumerate(new_tri_faces):
         try:
             # if vertex already in quads, replace id
-            new_tri_faces[i][0] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[0] - offset],axis=1))[0] + global_offset
+            new_tri_faces[i][0] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[0] - offset], axis=1))[0] + global_offset
         except (ValueError, IndexError):
             # no such vertex found
             pass
 
         try:
             # if vertex already in quads, replace id
-            new_tri_faces[i][1] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[1] - offset],axis=1))[0] + global_offset
+            new_tri_faces[i][1] = np.where(np.all(new_quad_vertices == new_tri_vertices[f[1] - offset], axis=1))[0] + global_offset
         except (ValueError, IndexError):
             # no such vertex found
             pass

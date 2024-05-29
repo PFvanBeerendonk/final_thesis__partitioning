@@ -1,16 +1,12 @@
 from unittest import TestCase, skip
-import pytest, os
+import os
 import numpy as np
 
 import trimesh
 from trimesh.caching import tracked_array
-from trimesh.creation import cylinder
 
-from beam_search.bsp import BSP, Part
-
+from beam_search.bsp import Part
 from beam_search.twin_cut import twin_cut, _find_connected, replace_duplicate_vertices
-
-from beam_search.helpers import export_part
 
 class TestCutAndHelpers(TestCase):
     def setUp(self):
@@ -85,7 +81,7 @@ class TestCutAndHelpers(TestCase):
         #  ==> update to j + offset - len(QUAD) = 1 + 10 - 4 = 7
         assert (result[0] == [0, 10, 7]).all()
 
-@skip
+
 class TestHorizontalCutSamples(TestCase):
     def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count):
         '''
@@ -112,6 +108,7 @@ class TestHorizontalCutSamples(TestCase):
             # for p in p_list:
             #     assert p.mesh.is_watertight
 
+    @skip
     def test_u(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
