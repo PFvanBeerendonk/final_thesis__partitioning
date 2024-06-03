@@ -42,14 +42,9 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
         )
         
         meshes = new_mesh.split(only_watertight=False)
-    
-        for i, m in enumerate(meshes):
-            export_part(Part(m), str(i))
 
         # If exactly 2 meshes are returned, cap on plane
         if len(meshes) == 2:
-            export_part(Part(meshes[0]), 'a' + str(face_index))
-            export_part(Part(meshes[1]), 'b' + str(face_index))
             capped_meshes = [
                 cap_vertices(meshes[0], plane_origin, plane_normal), 
                 cap_vertices(meshes[1], plane_origin, plane_normal)
@@ -130,11 +125,8 @@ def slice_mesh_plane(
     return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
 
 def cap_vertices(mesh, origin, normal):
-    # vertices = mesh.vertices
-    # faces = origin.faces
-
-    # print('pre', len(vertices))
-    return mesh # TODO: fix
+    vertices = mesh.vertices
+    faces = mesh.faces
 
     # verts_on_plane should be capped
 
@@ -142,7 +134,7 @@ def cap_vertices(mesh, origin, normal):
     # Start Capping
     # start by deduplicating vertices again
     unique, inverse = grouping.unique_rows(vertices)
-    # vertices = vertices[unique]  #THIS REMOVES VERTS, make work!
+    vertices = vertices[unique]
     # will collect additional faces
     f = inverse[faces]
     # remove degenerate faces by checking to make sure
@@ -178,7 +170,11 @@ def cap_vertices(mesh, origin, normal):
         faces.append(vid[fn])
     faces = np.vstack(faces)
 
-    print('post', len(vertices))
+    mesh = Trimesh(vertices=vertices, faces=faces)
+    # NOTE: cap may have been inserted with normal to the wrong side
+    # TODO: fix this here instead of having ot do a fix_normals
+    mesh.fix_normals()
+
     return mesh
 
 def slice_faces_plane_double(
@@ -519,6 +515,7 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
             # now lookup the other instances
             for w in [w for w in t1_where if w != t1_min]:
                 for j, f_t in enumerate(new_tri_faces):
+                    # update vertex_id if it is a duplicate, set to t_min
                     new_tri_faces[j][f_t==w] = t1_min
 
         if sum(v2_in_tri) >= 2:
@@ -528,7 +525,7 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
             # now lookup the other instances
             for w in [w for w in t2_where if w != t2_min]:
                 for j, f_t in enumerate(new_tri_faces):
+                    # update vertex_id if it is a duplicate, set to t_min
                     new_tri_faces[j][f_t==w] = t2_min
-
 
     return new_tri_faces

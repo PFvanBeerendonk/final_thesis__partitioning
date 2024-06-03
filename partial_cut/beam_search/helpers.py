@@ -72,6 +72,12 @@ def export_bsp(bsp: BSP):
     for i, part in enumerate(bsp.parts):
         part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
+def export_mesh_list(lst):
+    now = datetime.now()
+    current_location = os.path.dirname(__file__)
+    for i, mesh in enumerate(lst):
+        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+
 
 # mathematics
 

@@ -7,6 +7,7 @@ from trimesh.caching import tracked_array
 
 from beam_search.bsp import Part
 from beam_search.twin_cut import twin_cut, _find_connected, replace_duplicate_vertices
+from beam_search.helpers import export_part, export_mesh_list
 
 class TestCutAndHelpers(TestCase):
     def setUp(self):
@@ -93,37 +94,39 @@ class TestHorizontalCutSamples(TestCase):
         current_location = os.path.dirname(__file__)
         mesh = trimesh.load_mesh(f'{current_location}\samples\{sample_name}.stl')
 
+        # Mesh must be watertight to guarentee a resulting mesh that is watertight
         assert mesh.is_watertight
 
         result_parts = twin_cut(mesh, normal, origin)
         
-        # 2 options when cutting a U above the bottom
         assert len(result_parts) == expected_count
         for p_list in result_parts:
             # each option should contain EXACTLY 2 parts
             assert len(p_list) == 2
 
-            # TODO: implement cap
-            # # and each part should NOT be degenerate
-            # for p in p_list:
-            #     assert p.mesh.is_watertight
+            # and each part should NOT be degenerate
+            for p in p_list:
+                assert p.is_watertight
+                assert p.volume > 0.0
+                assert p.is_winding_consistent
+        return result_parts
 
-    @skip
     def test_u(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
 
-        self._excute_horizontal_cut_improved(
+        res = self._excute_horizontal_cut_improved(
             'sample__u', origin, normal, 2
         )
-        assert False
 
-    # @skip
     def test_bunny(self):
         origin = tracked_array([ 0, 0, 40])
         normal = tracked_array([0, 0, 1])
 
-        self._excute_horizontal_cut_improved(
+        res = self._excute_horizontal_cut_improved(
             'Bunny-LowPoly', origin, normal, 1
         )
+
+        export_mesh_list(res[0])
+        
 
