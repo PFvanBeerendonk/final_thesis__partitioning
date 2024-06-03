@@ -127,6 +127,4 @@ class TestHorizontalCutSamples(TestCase):
             'Bunny-LowPoly', origin, normal, 1
         )
 
-        export_mesh_list(res[0])
-        
 

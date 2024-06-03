@@ -5,7 +5,6 @@ from trimesh.graph import face_adjacency
 import networkx as nx
 
 from helpers import powerset_no_emptyset
-from bsp import Part
 
 from helpers import export_part
 
@@ -20,7 +19,27 @@ def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
     return [ [ids[c] for c in c_list] for c_list in components ] 
 
 
-def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Part]]:
+def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
+    
+    """
+    Cut a mesh into two parts on the plane defined by given plane_normal, plane_origin
+    Return each combination of exactly 2 parts
+
+    Parameters
+    ---------
+    mesh : Trimesh
+        Vertices of source mesh to slice
+    plane_normal : (3,) float
+        Normal vector of plane to intersect with mesh
+    plane_origin :  (3,) float
+        Point on plane to intersect with mesh
+
+    Returns
+    ----------
+    out_list : (n, 2) Trimesh
+        list of pairs of parts
+    
+    """
     slice2d = mesh.section(
         plane_normal=plane_normal,
         plane_origin=plane_origin,
