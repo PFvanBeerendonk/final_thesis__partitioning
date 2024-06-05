@@ -83,6 +83,7 @@ class Part:
         
         res = twin_cut(self.mesh, plane_normal, plane_origin)
 
+        # flatten
         return [
             Part(p) 
             for lst in res

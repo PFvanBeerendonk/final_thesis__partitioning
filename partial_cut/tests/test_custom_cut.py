@@ -12,7 +12,7 @@ from beam_search.helpers import export_part, export_mesh_list
 class TestCutAndHelpers(TestCase):
     def setUp(self):
         current_location = os.path.dirname(__file__)
-        mesh_path = f'{current_location}\samples\sample__u.stl'
+        mesh_path = f'{current_location}\\samples\\sample__u.stl'
 
         mesh = trimesh.load_mesh(mesh_path)
         self.part = Part(mesh)
@@ -84,7 +84,7 @@ class TestCutAndHelpers(TestCase):
 
 
 class TestHorizontalCutSamples(TestCase):
-    def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count):
+    def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count, export=False):
         '''
             cut samples/{sample_name} at origin, normal
 
@@ -92,7 +92,7 @@ class TestHorizontalCutSamples(TestCase):
             each result should have length 2 and each part should be watertight
         '''
         current_location = os.path.dirname(__file__)
-        mesh = trimesh.load_mesh(f'{current_location}\samples\{sample_name}.stl')
+        mesh = trimesh.load_mesh(f'{current_location}\\samples\\{sample_name}.stl')
 
         # Mesh must be watertight to guarentee a resulting mesh that is watertight
         assert mesh.is_watertight
@@ -103,6 +103,7 @@ class TestHorizontalCutSamples(TestCase):
         for p_list in result_parts:
             # each option should contain EXACTLY 2 parts
             assert len(p_list) == 2
+            if export: export_mesh_list(p_list)
 
             # and each part should NOT be degenerate
             for p in p_list:
