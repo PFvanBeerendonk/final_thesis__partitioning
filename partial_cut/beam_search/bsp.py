@@ -2,6 +2,7 @@ from typing import Self
 import numpy as np
 import math
 
+from helpers import flatten
 from twin_cut import twin_cut
 from config import (
     PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
@@ -84,11 +85,7 @@ class Part:
         res = twin_cut(self.mesh, plane_normal, plane_origin)
 
         # flatten
-        return [
-            Part(p) 
-            for lst in res
-            for p in lst
-        ]
+        return flatten(res, (lambda p: Part(p)))
 
 
     """

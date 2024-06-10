@@ -127,5 +127,12 @@ class TestHorizontalCutSamples(TestCase):
         res = self._excute_horizontal_cut_improved(
             'Bunny-LowPoly', origin, normal, 1
         )
+        
+    def test_spikes(self):
+        origin = tracked_array([ 0, 0, 0])
+        normal = tracked_array([0, 0, 1])
 
+        res = self._excute_horizontal_cut_improved(
+            'sample__spikes', origin, normal, 1, True
+        )
 

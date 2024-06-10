@@ -6,7 +6,7 @@ import networkx as nx
 
 from helpers import powerset_no_emptyset
 
-from helpers import export_part
+from helpers import flatten, export_part, export_mesh_list
 
 def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
     faces = [mesh.faces[i] for i in ids]
@@ -51,7 +51,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
 
     out_list = []
     for components in powerset_no_emptyset(connected_components):
-        face_index = [item for c in components for item in c]
+        face_index = flatten(components)
 
         print('cutting for face_index', face_index)
         # cut

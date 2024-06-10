@@ -5,7 +5,8 @@ import pytest
 from trimesh.creation import cylinder
 
 from beam_search.helpers import (
-    highest_ranked, all_at_goal, not_at_goal_set, powerset_no_emptyset
+    highest_ranked, all_at_goal, not_at_goal_set, powerset_no_emptyset,
+    flatten,
 )
 from beam_search.bsp import BSP, Part
 
@@ -123,3 +124,27 @@ class TestPowersetNoEmptyset(TestCase):
             [{1},{2,4}]
         )
         assert list(out) == [[{1}], [{2,4}], [{1},{2,4}]]
+
+
+class TestFlatten(TestCase):
+    def test_flatten_none(self):
+        lst = []
+        res = flatten(lst)
+        assert res == []
+    
+    def test_flatten_short(self):
+        lst = [[1,2,3], [4,5]]
+        res = flatten(lst)
+        assert res == [1,2,3,4,5]
+
+    def test_flatten_very_deep(self):
+        lst = [[[1],[2,3]], [[4],[5]]]
+        res = flatten(lst)
+        assert res == [[1],[2,3],[4],[5]]
+
+    def test_flatten_func(self):
+        lst = [[1,2,3], [4,5]]
+        def plus_two(p):
+            return p + 2
+        res = flatten(lst, plus_two)
+        assert res == [3,4,5,6,7]

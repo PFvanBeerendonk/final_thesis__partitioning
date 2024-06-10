@@ -76,7 +76,7 @@ def export_mesh_list(lst):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
     for i, mesh in enumerate(lst):
-        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/lout{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
 
 # mathematics
@@ -89,3 +89,23 @@ def powerset_no_emptyset(s: list[any]) -> list[list[any]]:
     masks = [1 << i for i in range(x)]
     for i in range(1, 1 << x):
         yield [ss for mask, ss in zip(masks, s) if i & mask]
+
+def flatten(lst: list[list[any]], f=None) -> list[any]:
+    """
+        Flatten list of lists
+    """
+    # flattens list
+    if callable(f):
+        # apply f
+        return [
+            f(p)
+            for sub_list in lst
+            for p in sub_list
+        ]
+    else:
+        # do not apply f
+        return [
+            p
+            for sub_list in lst
+            for p in sub_list
+        ]
