@@ -53,7 +53,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     for components in powerset_no_emptyset(connected_components):
         face_index = flatten(components)
 
-        print('cutting for face_index', face_index)
+        print('--- cutting for face_index id', sum(face_index), '---\n')
         # cut
         new_mesh = slice_mesh_plane(
             mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
@@ -61,6 +61,10 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
         )
         
         meshes = new_mesh.split(only_watertight=False)
+        print('LEN', len(meshes))
+        raise Exception('')
+        export_mesh_list(meshes)
+        # raise Exception('')
 
         # If exactly 2 meshes are returned, cap on plane
         if len(meshes) == 2:
@@ -509,6 +513,7 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
     global_offset = offset - len(new_quad_vertices)
 
     for i, f in enumerate(new_tri_faces):
+        # get representative ID in new_tri_vertices
         id_1 = f[1] - offset
         id_2 = f[2] - offset
 
@@ -524,27 +529,39 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
             pass # no such vertex found
 
         # Find duplicate vertices in triangles
-        v1_in_tri = np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_1]), axis=1)
-        v2_in_tri = np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_2]), axis=1)
+        t1_where = np.where(np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_1]), axis=1))[0]
+        t2_where = np.where(np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_2]), axis=1))[0]
 
-        if sum(v1_in_tri) >= 2:
-            t1_where = np.where(v1_in_tri)[0]
+        if len(t1_where) >= 2:
             t1_min = min(t1_where)
             new_tri_faces[i][1] = t1_min + offset
             # now lookup the other instances
             for w in [w for w in t1_where if w != t1_min]:
-                for j, f_t in enumerate(new_tri_faces):
+                for j, _ in enumerate(new_tri_faces):
                     # update vertex_id if it is a duplicate, set to t_min
-                    new_tri_faces[j][f_t==w] = t1_min
+                    if new_tri_faces[j][2] == w + offset:
+                        # print('1iw', new_tri_faces[j][2])
+                        new_tri_faces[j][2] == t1_min + offset
+                        
+                    if new_tri_faces[j][1] == w + offset:
+                        # print('1uw')
+                        new_tri_faces[j][1] == t1_min + offset
 
-        if sum(v2_in_tri) >= 2:
-            t2_where = np.where(v2_in_tri)[0]
+
+        if len(t2_where) >= 2:
             t2_min = min(t2_where)
             new_tri_faces[i][2] = t2_min + offset
             # now lookup the other instances
             for w in [w for w in t2_where if w != t2_min]:
-                for j, f_t in enumerate(new_tri_faces):
-                    # update vertex_id if it is a duplicate, set to t_min
-                    new_tri_faces[j][f_t==w] = t2_min
-
+                # w is the offset in new_vertices, then `w + offset` is the offset in new_tri_faces
+                for j, _ in enumerate(new_tri_faces):
+                    if new_tri_faces[j][2] == w + offset:
+                        # print('2iw')
+                        new_tri_faces[j][2] == t2_min + offset
+                        
+                    if new_tri_faces[j][1] == w + offset:
+                        # print('2uw')
+                        new_tri_faces[j][1] == t2_min + offset
+            
+    # raise Exception('u')
     return new_tri_faces

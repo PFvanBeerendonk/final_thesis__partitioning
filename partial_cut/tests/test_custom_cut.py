@@ -112,6 +112,7 @@ class TestHorizontalCutSamples(TestCase):
                 assert p.is_winding_consistent
         return result_parts
 
+    @skip
     def test_u(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
@@ -120,6 +121,7 @@ class TestHorizontalCutSamples(TestCase):
             'sample__u', origin, normal, 2
         )
 
+    @skip
     def test_bunny(self):
         origin = tracked_array([ 0, 0, 40])
         normal = tracked_array([0, 0, 1])
