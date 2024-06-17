@@ -7,7 +7,7 @@ from trimesh.caching import tracked_array
 
 from beam_search.bsp import Part
 from beam_search.twin_cut import twin_cut, _find_connected, replace_duplicate_vertices_tri
-from beam_search.helpers import export_part, export_mesh_list
+from beam_search.helpers import flatten, export_part, export_mesh_list
 
 class BaseModelTestCase(TestCase):
     def _load_model(self, sample_name):
@@ -18,7 +18,6 @@ class BaseModelTestCase(TestCase):
 
         # Mesh must be watertight to guarentee a resulting mesh that is watertight
         assert self.mesh.is_watertight
-        self.part = Part(self.mesh)
 
     def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count, export=False):
         '''
@@ -48,9 +47,45 @@ class BaseModelTestCase(TestCase):
                 assert p.is_winding_consistent
         return result_parts
 
+class TestConnected(BaseModelTestCase):
+    def _val_find_connected(self, face_indeces, expected_num_indices, expected_num_components):
+        assert len(face_indeces) == expected_num_indices
+        
+        components = list(_find_connected(self.mesh, face_indeces))
+        assert len(components) == expected_num_components
+
+        # union is empty, intersection is face_indeces
+        component_intersection = set.intersection(*map(set,components))
+        component_union = flatten(components)
+        assert len(component_intersection) == 0
+        assert len(set(component_union)) == expected_num_indices
+
+        return components
+
+    def test_find_connected(self):
+        self._load_model('sample__u')
+        origin = tracked_array([ 0, 0, 4])
+        normal = tracked_array([0, 0, 1])
+        slice2d = self.mesh.section(
+            plane_normal=normal,
+            plane_origin=origin,
+        )
+        face_indeces = slice2d.metadata['face_index']
+        self._val_find_connected(face_indeces, 16, 2)
+
+    def test_find_connected_donut(self):
+        self._load_model('donut')
+        origin = tracked_array([ 0, 0, 0])
+        normal = tracked_array([0, 0, 1])
+        slice2d = self.mesh.section(plane_normal=normal, plane_origin=origin)
+        face_indeces = slice2d.metadata['face_index']
+        
+        self._val_find_connected(face_indeces, 96, 2)
+
 class TestCutAndHelpers(BaseModelTestCase):
     def setUp(self):
         self._load_model('sample__u')
+        self.part = Part(self.mesh)
 
     def test_horizontal_cut_original(self):
         origin = tracked_array([ 0, 0, 4])
@@ -62,38 +97,6 @@ class TestCutAndHelpers(BaseModelTestCase):
             assert p.mesh.is_watertight
 
         assert len(result_parts) == 3
-
-    def test_find_connected(self):
-        origin = tracked_array([ 0, 0, 4])
-        normal = tracked_array([0, 0, 1])
-        slice2d = self.part.mesh.section(
-            plane_normal=normal,
-            plane_origin=origin,
-        )
-        face_indeces = slice2d.metadata['face_index']
-
-        assert len(face_indeces) == 16
-        
-        components = list(_find_connected(self.part.mesh, face_indeces))
-        assert len(components) == 2
-
-        for id in face_indeces:
-            assert id in components[0] or id in components[1]
-
-    def test_find_connected_donut(self):
-        self._load_model('donut')
-        origin = tracked_array([ 0, 0, 0])
-        normal = tracked_array([0, 0, 1])
-        slice2d = self.part.mesh.section(plane_normal=normal, plane_origin=origin)
-        face_indeces = slice2d.metadata['face_index']
-
-        assert len(face_indeces) == 96
-        
-        components = list(_find_connected(self.part.mesh, face_indeces))
-        assert len(components) == 2
-
-        for id in face_indeces:
-            assert id in components[0] or id in components[1]
 
     def test_replace_duplicate_vertices_tri(self):
         '''   p-------q
