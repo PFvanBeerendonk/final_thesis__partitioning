@@ -2,7 +2,8 @@ from typing import Self
 import numpy as np
 import math
 
-from helpers import powerset_no_emptyset
+from helpers import flatten
+from twin_cut import twin_cut
 from config import (
     PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
     CONNECTOR_CONSTANT
@@ -70,47 +71,21 @@ class Part:
         graph.add_edges_from(adjacent_faces)
 
         components = nx.connected_components(graph)
-        return [ [ids[c] for c in c_list] for c_list in components ]
+        return [ [ids[c] for c in c_list] for c_list in components ] 
 
-    '''
-        Cut self.mesh into exactly 2 parts, based on a plane
 
-        @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
-    '''
+    
     def twin_cut(self, plane_normal, plane_origin) -> list[list[Self]]:
-        # find the list of indeces of faces on the plane
-        slice2d = self.mesh.section(
-            plane_normal=plane_normal,
-            plane_origin=plane_origin,
-        )
-        face_indeces = slice2d.metadata['face_index']
+        '''
+            Cut self.mesh into exactly 2 parts, based on a plane
 
-        # determine which faces are connected
-        connected_components = list(self._find_connected(face_indeces))
+            @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
+        '''
+        
+        res = twin_cut(self.mesh, plane_normal, plane_origin)
 
-        out_list = []
-        for components in powerset_no_emptyset(connected_components):
-            face_index = [item for c in components for item in c]
-
-            from helpers import export_part
-            export_part(
-                Part(mesh=Trimesh(vertices=self.mesh.vertices, faces=[self.mesh.faces[f] for f in face_index])),
-                face_index
-            )
-
-            print('\n'*2, 'face_index', face_index)
-            # cut
-            parts = self.cut(plane_normal, plane_origin, face_index, cap=False)
-            
-            # has exactly 2 parts?
-            if len(parts) == 2:
-                
-                # Trimesh has not implemented `cap` in combination with `face_index`. So we cap ourselves 
-                # TODO
-                out_list.append(parts)
-
-
-        return out_list
+        # flatten
+        return flatten(res, (lambda p: Part(p)))
 
 
     """

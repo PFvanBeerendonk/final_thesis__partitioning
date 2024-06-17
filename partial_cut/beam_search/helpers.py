@@ -72,14 +72,40 @@ def export_bsp(bsp: BSP):
     for i, part in enumerate(bsp.parts):
         part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
+def export_mesh_list(lst, val=''):
+    now = datetime.now()
+    current_location = os.path.dirname(__file__)
+    for i, mesh in enumerate(lst):
+        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/lout{val}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+
 
 # mathematics
 
-'''
-    Given list s, return the powerset of s. But exclude the emptyset
-'''
 def powerset_no_emptyset(s: list[any]) -> list[list[any]]:
+    '''
+        Given list s, return the powerset of s. But exclude the emptyset
+    '''
     x = sum(1 for _ in s)
     masks = [1 << i for i in range(x)]
     for i in range(1, 1 << x):
         yield [ss for mask, ss in zip(masks, s) if i & mask]
+
+def flatten(lst: list[list[any]], f=None) -> list[any]:
+    """
+        Flatten list of lists
+    """
+    # flattens list
+    if callable(f):
+        # apply f
+        return [
+            f(p)
+            for sub_list in lst
+            for p in sub_list
+        ]
+    else:
+        # do not apply f
+        return [
+            p
+            for sub_list in lst
+            for p in sub_list
+        ]
