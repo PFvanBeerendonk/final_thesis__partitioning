@@ -93,7 +93,6 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     for components in powerset_no_emptyset(connected_components):
         face_index = flatten(components)
 
-        print(f'--- cutting {len(components)} parts for face_index id {sum(face_index)} ---\n')
         # cut
         try:
             new_mesh = slice_mesh_plane(

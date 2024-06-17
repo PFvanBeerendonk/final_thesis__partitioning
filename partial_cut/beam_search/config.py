@@ -1,5 +1,5 @@
 # Relative paths from src folder
-INPUT_FILE_PATH = '../../examples/tue_logo__by_pieter.stl' #Bunny-LowPoly
+INPUT_FILE_PATH = '../../examples/Bunny-LowPoly.stl'
 OUTPUT_FOLDER = '../../output'
 
 

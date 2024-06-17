@@ -78,6 +78,7 @@ class Part:
     def twin_cut(self, plane_normal, plane_origin) -> list[list[Self]]:
         '''
             Cut self.mesh into exactly 2 parts, based on a plane
+            NOTE: can return empty list, in case of an error
 
             @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
         '''
@@ -141,15 +142,18 @@ class BSP:
         parts = [p for p in self.parts]
         parts.remove(part)
 
-        new_parts = part.cut(plane_normal, plane_origin)
+        new_parts = part.twin_cut(plane_normal, plane_origin)
 
-        return BSP(
-            parts=parts + new_parts, 
-            theta_zero=self.theta_zero,
+        if new_parts:
+            return BSP(
+                parts=parts + new_parts, 
+                theta_zero=self.theta_zero,
 
-            # update on_the_fly objectives
-            obj_conn=self._update_objectives_at_cut(part, plane_normal, plane_origin),
-        )
+                # update on_the_fly objectives
+                obj_conn=self._update_objectives_at_cut(part, plane_normal, plane_origin),
+            )
+        else:
+            return None
 
     
     ### OBJECTIVE FUNCTIONS ###
