@@ -142,15 +142,22 @@ class BSP:
         parts = [p for p in self.parts]
         parts.remove(part)
 
-        new_parts = part.twin_cut(plane_normal, plane_origin)
+        new_parts = part.twin_cut(
+            plane_normal=plane_normal, 
+            plane_origin=plane_origin,
+        )
 
-        if new_parts:
+        if len(new_parts) > 0:
             return BSP(
                 parts=parts + new_parts, 
                 theta_zero=self.theta_zero,
 
                 # update on_the_fly objectives
-                obj_conn=self._update_objectives_at_cut(part, plane_normal, plane_origin),
+                obj_conn=self._update_objectives_at_cut(
+                    part=part, 
+                    plane_normal=plane_normal, 
+                    plane_origin=plane_origin
+                ),
             )
         else:
             return None

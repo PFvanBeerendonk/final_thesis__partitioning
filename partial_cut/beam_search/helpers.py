@@ -4,6 +4,7 @@ import os
 import numpy as np
 from datetime import datetime
 
+from trimesh.base import Trimesh
 from trimesh.creation import icosphere
 
 from config import PLANE_SPACER, OUTPUT_FOLDER
@@ -47,36 +48,49 @@ def get_uniform_normals():
 
 def sufficiently_different(bsp: BSP, bsp_set: list[BSP]) -> bool:
     # TODO: make working
+    # just store most recent normal + origin
     return True
 
-'''
-    return origins for planes with `normal` ranging over `part`
-    Returned normals should cut `part` into at least 2 parts
-'''
-def sample_origins(part: Part, normal) -> list[(int, int, int)]:
-    projection = part.mesh.vertices @ normal
+def sample_origins(mesh: Trimesh, normal) -> list[(int, int, int)]:
+    """
+    Returns origins.
+    Each plane defined by normal and one such origin MUST intersect mesh
+
+    Parameters
+    ---------
+    mesh : Trimesh
+        Some mesh
+    normal : (3,) float
+        Normal vector
+
+    Returns
+    ----------
+    origins : (n, 3) : float
+        list of points such that the plane defined by `normal` and that point intersects the part
+    """
+    projection = mesh.vertices @ normal
 
     return [d * normal for d in np.arange(projection.min(), projection.max(), PLANE_SPACER)][1:]
 
 
 
 # Export helpers
-def export_part(part: Part, val=''):
+def export_part(part: Part, name='intermediate', val=''):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
-    part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/intermediate{val}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+    part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{val}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
-def export_bsp(bsp: BSP):
+def export_bsp(bsp: BSP, name='out'):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
     for i, part in enumerate(bsp.parts):
-        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/out{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
-def export_mesh_list(lst, val=''):
+def export_mesh_list(lst, name='lout', val=''):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
     for i, mesh in enumerate(lst):
-        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/lout{val}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+        mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{val}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
 
 # mathematics

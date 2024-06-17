@@ -1,12 +1,14 @@
 from unittest.mock import patch
 from unittest import TestCase
+from utils import BaseModelTestCase
 import pytest
 
 from trimesh.creation import cylinder
+from trimesh.caching import tracked_array
 
 from beam_search.helpers import (
     highest_ranked, all_at_goal, not_at_goal_set, powerset_no_emptyset,
-    flatten,
+    flatten, sample_origins, 
 )
 from beam_search.bsp import BSP, Part
 
@@ -148,3 +150,27 @@ class TestFlatten(TestCase):
             return p + 2
         res = flatten(lst, plus_two)
         assert res == [3,4,5,6,7]
+
+
+class TestSampleOrigins(BaseModelTestCase):
+    def _assert_intersects(self, normal, origin):
+        slice2d = self.mesh.section(
+            plane_normal=normal,
+            plane_origin=origin,
+        )
+        try:
+            x = slice2d.metadata['face_index']
+            assert len(x) > 0
+        except:
+            assert False
+
+    # This test is flaky
+    def test_sample_origin(self):
+        self._load_model('test_part__tue')
+        normal = tracked_array([ 0.86266848, -0.25989191, -0.43388856])
+
+        for origin in sample_origins(self.mesh, normal):
+            self._assert_intersects(normal=normal, origin=origin)
+
+        origin = [ 28.69145808,  -8.64373522, -14.43068322]
+        self._assert_intersects(normal=normal, origin=origin)

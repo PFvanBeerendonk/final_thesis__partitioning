@@ -60,7 +60,6 @@ def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
 
 
 def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
-    
     """
     Cut a mesh into two parts on the plane defined by given plane_normal, plane_origin
     Return each combination of exactly 2 parts
@@ -84,7 +83,12 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
         plane_normal=plane_normal,
         plane_origin=plane_origin,
     )
-    face_indeces = slice2d.metadata['face_index']
+    try:
+        face_indeces = slice2d.metadata['face_index']
+    except AttributeError:
+        # the interworkings between helpers.sample_origins and this here above is flaky
+        print(f'No intersection with origin: {plane_origin} and normal: {plane_normal}')
+        return []
 
     # determine which faces are connected
     connected_components = list(_find_connected(mesh, face_indeces))

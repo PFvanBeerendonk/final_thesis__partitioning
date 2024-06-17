@@ -49,7 +49,7 @@ def eval_cuts(bsp_t: BSP, part: Part, part_id: int, part_todo: int) -> list[BSP]
     for i, n in enumerate(normals):
         if i % 10 == 0:
             _report_eval_cut(i, len(normals), part_id, part_todo)
-        for j, p in enumerate(sample_origins(part, n)):
+        for p in sample_origins(part.mesh, n):
             new_candidate_cut = bsp_t.cut_part(part, n, p)
             if new_candidate_cut:
                 candidate_cuts.append(new_candidate_cut)
