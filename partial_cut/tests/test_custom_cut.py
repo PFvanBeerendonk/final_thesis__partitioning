@@ -99,7 +99,7 @@ class TestCutAndHelpers(BaseModelTestCase):
             assert p.mesh.is_watertight
 
         assert len(result_parts) == 3
-
+ 
     def test_replace_duplicate_vertices_tri(self):
         '''   p-------q
               |      /|
