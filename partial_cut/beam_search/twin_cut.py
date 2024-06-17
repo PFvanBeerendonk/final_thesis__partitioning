@@ -7,6 +7,10 @@ from helpers import powerset_no_emptyset, flatten
 # debug helpers
 from helpers import export_part, export_mesh_list
 
+class EmptyCutException(BaseException):
+    pass
+
+
 def _face_neighborhood(faces_sparse):
     VT = faces_sparse
     TT = VT.T * VT
@@ -89,13 +93,17 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     for components in powerset_no_emptyset(connected_components):
         face_index = flatten(components)
 
-        print('--- cutting for face_index id', sum(face_index), '---\n')
+        print(f'--- cutting {len(components)} parts for face_index id {sum(face_index)} ---\n')
         # cut
-        new_mesh = slice_mesh_plane(
-            mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
-            face_index=face_index,
-        )
-        
+        try:
+            new_mesh = slice_mesh_plane(
+                mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
+                face_index=face_index,
+            )
+        except EmptyCutException:
+            # Exception, see testcase TestFailingTwinCuts.test_donut
+            continue
+
         meshes = new_mesh.split(only_watertight=False)
 
         # If exactly 2 meshes are returned, cap on plane
@@ -105,8 +113,6 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
                 cap_vertices(meshes[1], plane_origin, plane_normal)
             ]
             out_list.append(capped_meshes)
-        else:
-            print('uwu')
 
     return out_list
 
@@ -357,7 +363,7 @@ def slice_faces_plane_double(
     cut_signs_tri = signs[np.logical_and(onedge, signs_sum >= 0)]
     # If no faces to cut, the surface is not in contact with this plane.
     if len(cut_faces_quad) + len(cut_faces_tri) == 0:
-        raise Exception("Empty cut")
+        raise EmptyCutException("Empty cut")
 
     # Handle the case where a new quad is formed by the intersection
     # First, extract the intersection points belonging to a new quad

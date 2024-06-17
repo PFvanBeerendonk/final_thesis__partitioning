@@ -47,7 +47,8 @@ class BaseModelTestCase(TestCase):
                 assert p.is_winding_consistent
         return result_parts
 
-class TestConnected(BaseModelTestCase):
+
+class TestHelperConnected(BaseModelTestCase):
     def _val_find_connected(self, face_indeces, expected_num_indices, expected_num_components):
         assert len(face_indeces) == expected_num_indices
         
@@ -81,6 +82,7 @@ class TestConnected(BaseModelTestCase):
         face_indeces = slice2d.metadata['face_index']
         
         self._val_find_connected(face_indeces, 96, 2)
+
 
 class TestCutAndHelpers(BaseModelTestCase):
     def setUp(self):
@@ -161,7 +163,17 @@ class TestHorizontalCutSamples(BaseModelTestCase):
             'sample__spikes', origin, normal, 1
         )
 
-    # this variant will be fixed, currently returns fails in twin_cut where `if len(meshes) == 2:`.
+
+class TestFailingTwinCuts(BaseModelTestCase):
+    '''
+    TODO: Main issues with twin cut are:
+        - if there is a shape with a dimple in it 
+          NOTE: imagine red blood cell, cut such that it becomes a donut and a solidcircle
+        - For unknown reason, the donut cut case fails. 
+          NOTE: a lot of vertices are ONPLANE, moreover each triangle to be cut has 1 vertex on-plane
+    '''
+
+    # TODO: this variant will be fixed, currently returns fails in twin_cut where `if len(meshes) == 2:`.
     @skip
     def test_spikes_inner_mesh(self):
         origin = tracked_array([ 0, 0, 0])
@@ -171,8 +183,8 @@ class TestHorizontalCutSamples(BaseModelTestCase):
             'sample__spikes', origin, normal, 1
         )
 
-class Adsa(BaseModelTestCase):
-    @skip
+    # TODO: raises empty_cut exception... why?
+    @skip 
     def test_donut(self):
         origin = tracked_array([ 0, 0, 0])
         normal = tracked_array([0, 0, 1])
@@ -180,5 +192,4 @@ class Adsa(BaseModelTestCase):
         res = self._excute_horizontal_cut_improved(
             'donut', origin, normal, 1
         )
-
 

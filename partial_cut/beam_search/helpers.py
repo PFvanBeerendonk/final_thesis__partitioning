@@ -81,10 +81,10 @@ def export_mesh_list(lst, val=''):
 
 # mathematics
 
-'''
-    Given list s, return the powerset of s. But exclude the emptyset
-'''
 def powerset_no_emptyset(s: list[any]) -> list[list[any]]:
+    '''
+        Given list s, return the powerset of s. But exclude the emptyset
+    '''
     x = sum(1 for _ in s)
     masks = [1 << i for i in range(x)]
     for i in range(1, 1 << x):
