@@ -87,7 +87,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
         face_indeces = slice2d.metadata['face_index']
     except AttributeError:
         # the interworkings between helpers.sample_origins and this here above is flaky
-        print(f'No intersection with origin: {plane_origin} and normal: {plane_normal}')
+        print(f'\nNo intersection with origin: {plane_origin} and normal: {plane_normal}')
         return []
 
     # determine which faces are connected
