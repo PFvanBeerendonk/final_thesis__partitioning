@@ -1,21 +1,57 @@
 from trimesh import Trimesh
 import numpy as np
-
-from trimesh.graph import face_adjacency
 import networkx as nx
 
-from helpers import powerset_no_emptyset
+from helpers import powerset_no_emptyset, flatten
 
-from helpers import flatten, export_part, export_mesh_list
+# debug helpers
+from helpers import export_part, export_mesh_list
+
+def _face_neighborhood(faces_sparse):
+    VT = faces_sparse
+    TT = VT.T * VT
+    TT.setdiag(0)
+    TT.eliminate_zeros()
+    TT = TT.tocoo()
+    neighborhood = np.concatenate(
+        (TT.row[:, None], TT.col[:, None]), axis=-1, dtype=np.int64
+    )
+    return neighborhood
+
+def _custom_face_adjacency(faces, vertices):
+    faces_sparse = geometry.index_sparse(columns=len(vertices), indices=faces)
+    adjacency = _face_neighborhood(faces_sparse)
+    # pairs of faces which share a vertex
+
+    return adjacency
 
 def _find_connected(mesh, ids: list[int]) -> list[list[int]]:
+    """
+    Given a mesh, and the ids of a given set of faces in that mesh, 
+    find connected components in these faces (i.e. they share at least one vertex)
+
+    Parameters
+    ---------
+    mesh : Trimesh
+        input mesh
+    ids : (n, 1) int
+        list of faces to consider
+
+    Returns
+    ----------
+    connected_components : (n, (m, 1)) int
+        List of connected component, where each connected component
+        is a subest of ids, and where all together form ids without overlap
+    """
     faces = [mesh.faces[i] for i in ids]
 
-    adjacent_faces = face_adjacency(faces)
+    adjacent_faces = _custom_face_adjacency(faces, mesh.vertices)
+
     graph = nx.Graph()
     graph.add_edges_from(adjacent_faces)
 
     components = nx.connected_components(graph)
+    
     return [ [ids[c] for c in c_list] for c_list in components ] 
 
 
@@ -61,10 +97,6 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
         )
         
         meshes = new_mesh.split(only_watertight=False)
-        print('LEN', len(meshes))
-        raise Exception('')
-        export_mesh_list(meshes)
-        # raise Exception('')
 
         # If exactly 2 meshes are returned, cap on plane
         if len(meshes) == 2:
@@ -73,6 +105,8 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
                 cap_vertices(meshes[1], plane_origin, plane_normal)
             ]
             out_list.append(capped_meshes)
+        else:
+            print('uwu')
 
     return out_list
 
@@ -355,6 +389,8 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_quads, 3)
 
+        new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
+
         # Add new vertices to existing vertices, triangulate quads, and add the
         # resulting triangles to the new faces
         new_vertices = np.append(new_vertices, new_quad_vertices, axis=0)
@@ -389,7 +425,7 @@ def slice_faces_plane_double(
         ].reshape(2 * num_tris, 3)
 
         # replace face-vertex indices with points already created in new_quad_vertices
-        new_tri_faces = replace_duplicate_vertices(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
+        new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
 
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
@@ -429,6 +465,8 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_quads, 3)
 
+        new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
+
         # Add new vertices to existing vertices, triangulate quads, and add the
         # resulting triangles to the new faces
         new_vertices = np.append(new_vertices, new_quad_vertices, axis=0)
@@ -464,7 +502,7 @@ def slice_faces_plane_double(
         ].reshape(2 * num_tris, 3)
 
         # replace face-vertex indices with points already created in new_quad_vertices
-        new_tri_faces = replace_duplicate_vertices(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
+        new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
 
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
@@ -487,7 +525,37 @@ def slice_faces_plane_double(
     return final_vert, final_face
 
 # list based stuff
-def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri_vertices):
+def replace_duplicate_vertices_quad(offset: int, new_quad_faces, new_quad_vertices):
+    """
+    Parameters
+    ---------
+    offset : int
+        index offset of new_vertices, to correct index
+    new_quad_faces : (n, 4) int : np.ndarray
+        Faces of source mesh to slice
+    new_quad_vertices : (n, 3) float : TrimeshTrackedArray of TrimeshTrackedArrays
+        List of vertices
+
+    Returns
+    ----------
+    new_quad_faces : (n, 3) int
+        Faces with duplicates from new_quad_vertices replaced
+    """
+    for i, f in enumerate(new_quad_faces):
+        # get representative ID in new_tri_vertices
+        id_2 = f[2] - offset
+        id_3 = f[3] - offset
+
+        t1_where = np.where(np.all(np.isclose(new_quad_vertices, new_quad_vertices[id_2]), axis=1))[0]
+        t2_where = np.where(np.all(np.isclose(new_quad_vertices, new_quad_vertices[id_3]), axis=1))[0]
+        
+        # if vertex already in quads, replace id
+        new_quad_faces = _handle_wheres(new_quad_faces, t1_where, offset, i, 2)
+        new_quad_faces = _handle_wheres(new_quad_faces, t2_where, offset, i, 3)
+
+    return new_quad_faces
+
+def replace_duplicate_vertices_tri(offset: int, new_tri_faces, new_quad_vertices, new_tri_vertices):
     """
     Replace index `i` of some face in new_tri_faces if
         `i - offset` in new_tri_vertices equals some vertex in new_quad_vertices at index `j`
@@ -528,40 +596,52 @@ def replace_duplicate_vertices(offset, new_tri_faces, new_quad_vertices, new_tri
         except (ValueError, IndexError):
             pass # no such vertex found
 
-        # Find duplicate vertices in triangles
+        # Find duplicate vertices in triangles, 
+        # if len(tX_where) >= 2 it gives its own location, and all duplicate vertices
         t1_where = np.where(np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_1]), axis=1))[0]
         t2_where = np.where(np.all(np.isclose(new_tri_vertices, new_tri_vertices[id_2]), axis=1))[0]
 
-        if len(t1_where) >= 2:
-            t1_min = min(t1_where)
-            new_tri_faces[i][1] = t1_min + offset
-            # now lookup the other instances
-            for w in [w for w in t1_where if w != t1_min]:
-                for j, _ in enumerate(new_tri_faces):
-                    # update vertex_id if it is a duplicate, set to t_min
-                    if new_tri_faces[j][2] == w + offset:
-                        # print('1iw', new_tri_faces[j][2])
-                        new_tri_faces[j][2] == t1_min + offset
-                        
-                    if new_tri_faces[j][1] == w + offset:
-                        # print('1uw')
-                        new_tri_faces[j][1] == t1_min + offset
-
-
-        if len(t2_where) >= 2:
-            t2_min = min(t2_where)
-            new_tri_faces[i][2] = t2_min + offset
-            # now lookup the other instances
-            for w in [w for w in t2_where if w != t2_min]:
-                # w is the offset in new_vertices, then `w + offset` is the offset in new_tri_faces
-                for j, _ in enumerate(new_tri_faces):
-                    if new_tri_faces[j][2] == w + offset:
-                        # print('2iw')
-                        new_tri_faces[j][2] == t2_min + offset
-                        
-                    if new_tri_faces[j][1] == w + offset:
-                        # print('2uw')
-                        new_tri_faces[j][1] == t2_min + offset
+        new_tri_faces = _handle_wheres(new_tri_faces, t1_where, offset, i, 1)
+        new_tri_faces = _handle_wheres(new_tri_faces, t2_where, offset, i, 2)
             
-    # raise Exception('u')
     return new_tri_faces
+
+def _handle_wheres(new_faces, where, offset: int, face_id: int, vertex_number: int):
+    """
+    Replaces duplicate IDs of new_tri_verts in new_faces
+
+    Parameters
+    ---------
+    new_faces : (n, 3) int : np.ndarray
+        Faces of source mesh to slice
+    where : (n, 1) int
+        Indices of vertices in (in new_tri/quad_vertices) that are duplicates
+    offset : int
+        Offset of an id in new_tri/quad_vertices to the actual id
+    face_id : int
+        face where we know that a duplication occured
+    vertex_number : int
+        vertex in that face (faces are triangles or quads) where we know a duplication occured
+
+    Returns
+    ----------
+    new_faces : (n, 3) int
+        For faces with duplicates from new_tri/quad_vertices, all duplicate IDs are replaced with the minimum
+    """
+    if len(where) < 2:
+        return new_faces
+
+    t_min = min(where)
+    new_faces[face_id][vertex_number] = t_min + offset
+    # now lookup the other instances
+    for w in [w for w in where if w != t_min]:
+        # w is the offset in new_vertices, then `w + offset` is the actual id in new_faces
+        for j, _ in enumerate(new_faces):
+            # in both QUAD and TRI, the last 2 vertices have to be checked, as they are on-plane
+            if new_faces[j][-1] == w + offset:
+                new_faces[j][-1] == t_min + offset
+                
+            if new_faces[j][-2] == w + offset:
+                new_faces[j][-2] == t_min + offset
+
+    return new_faces
