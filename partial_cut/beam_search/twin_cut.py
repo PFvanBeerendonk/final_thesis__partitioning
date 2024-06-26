@@ -116,6 +116,9 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
                 cap_vertices(meshes[1], plane_origin, plane_normal)
             ]
             out_list.append(capped_meshes)
+        else:
+            print(f'LEN {len(meshes)}')
+            # export_mesh_list(meshes)
 
     return out_list
 
@@ -398,8 +401,6 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_quads, 3)
 
-        new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
-
         # Add new vertices to existing vertices, triangulate quads, and add the
         # resulting triangles to the new faces
         new_vertices = np.append(new_vertices, new_quad_vertices, axis=0)
@@ -433,12 +434,13 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_tris, 3)
 
-        # replace face-vertex indices with points already created in new_quad_vertices
-        new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
-
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
+
+    # process the inside vertices
+    new_vertices, new_faces = merge_duplicate_vertices(new_vertices, new_faces)
+    offset_inside = len(new_vertices)
 
     #### Now let us hande the "outside" faces and add those
     cut_faces_quad = faces[np.logical_and(onedge, signs_sum >= 0)]
@@ -474,7 +476,7 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_quads, 3)
 
-        new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
+        # new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
 
         # Add new vertices to existing vertices, triangulate quads, and add the
         # resulting triangles to the new faces
@@ -482,7 +484,7 @@ def slice_faces_plane_double(
         new_tri_faces_from_quads = geometry.triangulate_quads(new_quad_faces)
         new_faces = np.append(new_faces, new_tri_faces_from_quads, axis=0)
 
-    
+
     # Handle the case where a new triangle is formed by the intersection
     # First, extract the intersection points belonging to a new triangle
     tri_int_points = int_points_outside[(signs_sum < 0)[onedge], :, :]
@@ -510,14 +512,14 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_tris, 3)
 
-        # replace face-vertex indices with points already created in new_quad_vertices
-        new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
+        # new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
 
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
 
     ### end handle outside
+    new_vertices, new_faces = merge_duplicate_vertices(new_vertices, new_faces, offset_inside)
 
     # find the unique indices in the new faces
     # using an integer-only unique function
@@ -532,6 +534,57 @@ def slice_faces_plane_double(
     # TODO: remove vertices that are not used
 
     return final_vert, final_face
+
+def merge_duplicate_vertices(vertices, faces, from_vindex=0):
+    """
+    merges duplicate vertices IF index at least `from_vindex`
+
+    Parameters
+    ---------
+    vertices : (n, 3) float
+        list of vertices
+    faces : (n, 3) int : np.ndarray
+        list of vertices
+    from_vindex : int
+        index from which vertex may be merged
+
+    Returns
+    ----------
+    vertices : (n, 3) float
+    faces : (n, 3) int : np.ndarray
+    """
+    # NOTE: repurposed from Trimesh.grouping.merge_vertices
+
+    vindex_mask = np.arange(len(vertices))
+    vindex_mask = vindex_mask >= from_vindex
+
+    referenced = np.zeros(len(vertices), dtype=bool)
+    referenced[faces] = True
+    # collect vertex attributes into sequence we can stack
+    digits_vertex = util.decimal_to_digits(tol.merge)
+    stacked = [vertices * (10**digits_vertex)]
+
+    # stack collected vertex properties and round to integer
+    stacked = np.column_stack(stacked).round().astype(np.int64)
+
+    from trimesh.grouping import unique_rows
+    # check unique rows of referenced vertices
+    u, i = unique_rows(stacked[referenced], keep_order=True)
+
+    # construct an inverse using the subset
+    inverse = np.zeros(len(vertices), dtype=np.int64)
+    inverse[referenced] = i
+    # get the vertex mask
+    mask = np.nonzero(referenced)[0][u]
+
+    # UPDATE VERTICES
+    faces = inverse[faces.reshape(-1)].reshape((-1, 3))
+
+    # actually apply the mask
+    vertices = vertices[mask]
+
+    return vertices, faces
+
 
 # list based stuff
 def replace_duplicate_vertices_quad(offset: int, new_quad_faces, new_quad_vertices):

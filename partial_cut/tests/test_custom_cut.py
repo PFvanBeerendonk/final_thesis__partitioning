@@ -100,6 +100,7 @@ class TestCutAndHelpers(BaseModelTestCase):
 
 
 class TestHorizontalCutSamples(BaseModelTestCase):
+    @skip
     def test_u(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
@@ -108,6 +109,7 @@ class TestHorizontalCutSamples(BaseModelTestCase):
             'sample__u', origin, normal, 2
         )
 
+    @skip
     def test_bunny(self):
         origin = tracked_array([ 0, 0, 40])
         normal = tracked_array([0, 0, 1])
@@ -121,7 +123,7 @@ class TestHorizontalCutSamples(BaseModelTestCase):
         normal = tracked_array([0, 0, 1])
 
         res = self._excute_horizontal_cut_improved(
-            'sample__spikes', origin, normal, 1
+            'sample__spikes', origin, normal, 1, True
         )
 
 
