@@ -27,7 +27,7 @@ def main():
 
     end_time = time.time()
     print('Finished beam search, end time')
-    print(f'\n--- Time elapsed = {end_time - start_time} ---\n')
+    print(f'\n--- Time elapsed = {end_time - start_time} seconds ---\n')
 
     print('Exporting Files of best Partition')
     export_bsp(bsp)
