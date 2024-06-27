@@ -5,7 +5,7 @@ import networkx as nx
 from helpers import powerset_no_emptyset, flatten
 
 # debug helpers
-from helpers import export_part, export_mesh_list
+from helpers import calculate_eps_objective_seam, export_part, export_mesh_list
 
 class EmptyCutException(BaseException):
     pass
@@ -99,7 +99,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
 
         # cut
         try:
-            new_mesh = slice_mesh_plane(
+            new_mesh, eps_seam = slice_mesh_plane(
                 mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
                 face_index=face_index,
             )
@@ -164,6 +164,8 @@ def slice_mesh_plane(
     ----------
     new_mesh : Trimesh object
       Sliced mesh
+    eps_seam : float
+      Estimated cost of cut C based on ambient occlusion
     """
 
     # check input plane
@@ -179,16 +181,16 @@ def slice_mesh_plane(
         plane_origin.reshape((-1, 3)), plane_normal.reshape((-1, 3))
     ):
         # save the new vertices and faces
-        vertices, faces = slice_faces_plane_double(
-            vertices=vertices,
-            faces=faces,
+        vertices, faces, eps_seam = slice_faces_plane_double(
+            vertices,
+            faces,
             plane_normal=normal,
             plane_origin=origin,
             face_index=face_index,
         )
 
     # return the sliced mesh, do NOT delete duplicate vertices (process=False)
-    return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
+    return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs), eps_seam
 
 def cap_vertices(mesh, origin, normal):
     vertices = mesh.vertices
@@ -525,13 +527,14 @@ def slice_faces_plane_double(
         new_faces.reshape(-1), minlength=len(new_vertices), return_inverse=True
     )
 
+    # vertex on edge
+    eps_seam = calculate_eps_objective_seam(new_vertices.copy(), new_faces.copy(), len(vertices))
+
     # use the unique indexes for our final vertex and faces
     final_vert = new_vertices[unique]
     final_face = inverse.reshape((-1, 3))
 
-    # TODO: remove vertices that are not used
-
-    return final_vert, final_face
+    return final_vert, final_face, eps_seam
 
 # list based stuff
 def replace_duplicate_vertices_quad(offset: int, new_quad_faces, new_quad_vertices):

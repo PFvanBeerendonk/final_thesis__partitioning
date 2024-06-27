@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import os
+from igl import ambient_occlusion, per_vertex_normals
 import numpy as np
 from datetime import datetime
 
@@ -72,7 +73,27 @@ def sample_origins(mesh: Trimesh, normal) -> list[(int, int, int)]:
 
     return [d * normal for d in np.arange(projection.min(), projection.max(), PLANE_SPACER)][1:]
 
+def calculate_eps_objective_seam(vertices, faces, original_length):
+    """
+    Given a filter for the vertices that are on the plane
+    Determine the penalty for each vertex that is on the plane, based on ambient occlusion
+    The more occuled, lower ao value, the better!
+    """
+    # used: https://libigl.github.io/libigl-python-bindings/tut-chapter5/
+    # must calculate normals over ALL vertices, otherwise we run into trouble
+    normals = per_vertex_normals(vertices, faces)
 
+    # take all vertices at and beyond index original_length
+    v_sample = vertices[original_length:]
+    n_sample = normals[original_length:]
+    # calculate ambient occlusion
+    # as far as I understand, calculates ao for v_sample with normals n_sample 
+    # the final number is a scalar showing 0 if very occluded, and 1 if not at all occluded
+    # it is also used to render ambient lighting
+    ao = ambient_occlusion(vertices, faces, v_sample, n_sample, 20)
+
+    # eps(C) = \sum_{onedge} p where p is ambient occlusion
+    return sum(ao)
 
 # Export helpers
 def export_part(part: Part, name='intermediate', val=''):
