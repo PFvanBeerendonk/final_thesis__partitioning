@@ -77,6 +77,8 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     ----------
     out_list : (n, 2) Trimesh
         list of pairs of parts
+    eps_seam : int
+        value of eps(C), based on ambient occlusion of added vertices
     
     """
     slice2d = mesh.section(
@@ -117,7 +119,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
             ]
             out_list.append(capped_meshes)
 
-    return out_list
+    return out_list, eps_seam
 
 # Adapted from Trimesh
 
@@ -527,7 +529,7 @@ def slice_faces_plane_double(
         new_faces.reshape(-1), minlength=len(new_vertices), return_inverse=True
     )
 
-    # vertex on edge
+    # find ambient occlusion for all vertices that were added, i.e. everything in vertices[len(vertices):]
     eps_seam = calculate_eps_objective_seam(new_vertices.copy(), new_faces.copy(), len(vertices))
 
     # use the unique indexes for our final vertex and faces

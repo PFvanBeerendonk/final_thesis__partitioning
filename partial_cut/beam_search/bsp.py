@@ -5,7 +5,7 @@ import math
 from helpers import flatten
 from twin_cut import twin_cut
 from config import (
-    PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT
+    PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, SEAM_WEIGHT
 )
 
 from trimesh import Trimesh
@@ -82,10 +82,10 @@ class Part:
             @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
         '''
         
-        res = twin_cut(self.mesh, plane_normal, plane_origin)
+        res, eps_seam = twin_cut(self.mesh, plane_normal, plane_origin)
 
         # flatten
-        return flatten(res, (lambda p: Part(p)))
+        return flatten(res, (lambda p: Part(p))), eps_seam
 
 
     """
@@ -112,7 +112,7 @@ class BSP:
         We only need to maintain track of the parts, which are all meshes
     """
 
-    def __init__(self, parts: list[Part], theta_zero = 0):
+    def __init__(self, parts: list[Part], theta_zero = 0, seam_sum = 0, latest_seam = 0):
         if len(parts) == 0:
             raise Exception('Must have at least 1 part')
         self.parts = parts
@@ -122,7 +122,10 @@ class BSP:
         else:
             self.theta_zero = theta_zero
 
-        # maintain "on the fly" objectives
+        ### maintain "on the fly" objectives ###
+        # First sum in seam objective: \sum_{C \in T}eps(C)
+        self.seam_sum = seam_sum
+        self.latest_seam = latest_seam
 
     def all_fit(self):
         return all(part.fits_in_volume for part in self.parts)
@@ -140,7 +143,7 @@ class BSP:
         parts = [p for p in self.parts]
         parts.remove(part)
 
-        new_parts = part.twin_cut(
+        new_parts, eps_seam = part.twin_cut(
             plane_normal=plane_normal, 
             plane_origin=plane_origin,
         )
@@ -149,6 +152,8 @@ class BSP:
             return BSP(
                 parts=parts + new_parts, 
                 theta_zero=self.theta_zero,
+                seam_sum=self.seam_sum + eps_seam,
+                latest_seam=eps_seam,
             )
         else:
             return None
@@ -158,10 +163,9 @@ class BSP:
     def score(self):
         return (
             PART_WEIGHT * self._objective_part() + 
-            UTIL_WEIGHT * self._objective_util()
+            UTIL_WEIGHT * self._objective_util() +
+            SEAM_WEIGHT * self._objective_seam()
         )
-    
-    
 
     def _objective_part(self):
         # 1/Theta * \sum p /in T O(p)
@@ -174,3 +178,7 @@ class BSP:
 
         return max(_util(p) for p in self.parts)
 
+    def _objective_seam(self):
+        return 1/self.theta_zero * (
+            self.seam_sum + self.latest_seam * sum(p.est_part_required() - 1 for p in self.parts)
+        ) 

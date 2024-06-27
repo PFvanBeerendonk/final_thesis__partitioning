@@ -73,19 +73,33 @@ def sample_origins(mesh: Trimesh, normal) -> list[(int, int, int)]:
 
     return [d * normal for d in np.arange(projection.min(), projection.max(), PLANE_SPACER)][1:]
 
-def calculate_eps_objective_seam(vertices, faces, original_length):
+def calculate_eps_objective_seam(vertices, faces, cap):
     """
     Given a filter for the vertices that are on the plane
     Determine the penalty for each vertex that is on the plane, based on ambient occlusion
     The more occuled, lower ao value, the better!
+    
+    Parameters
+    ---------
+    vertices : (3,) float
+        List of all vertices of a mesh
+    faces : (3,) float
+        List of all faces for the same mesh
+    cap : int
+        Only calculate ambient occlusion for vertices in the slice [cap:]
+
+    Returns
+    ----------
+    eps_seam : (n, 3) : float
+        list of points such that the plane defined by `normal` and that point intersects the part
     """
     # used: https://libigl.github.io/libigl-python-bindings/tut-chapter5/
     # must calculate normals over ALL vertices, otherwise we run into trouble
     normals = per_vertex_normals(vertices, faces)
 
     # take all vertices at and beyond index original_length
-    v_sample = vertices[original_length:]
-    n_sample = normals[original_length:]
+    v_sample = vertices[cap:]
+    n_sample = normals[cap:]
     # calculate ambient occlusion
     # as far as I understand, calculates ao for v_sample with normals n_sample 
     # the final number is a scalar showing 0 if very occluded, and 1 if not at all occluded
