@@ -112,7 +112,7 @@ class BSP:
         We only need to maintain track of the parts, which are all meshes
     """
 
-    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, diagonal_zero=0):
+    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, one_over_diagonal_zero=0):
         if len(parts) == 0:
             raise Exception('Must have at least 1 part')
         self.parts = parts
@@ -122,11 +122,11 @@ class BSP:
         else:
             self.one_over_theta_zero = one_over_theta_zero
 
-        if diagonal_zero == 0:
+        if one_over_diagonal_zero == 0:
             # length of diagonal of OBB, is sqrt(x^2 + y^2 + z^2)
-            self.diagonal_zero = math.sqrt(sum(e**2 for e in parts[0].extents))
+            self.one_over_diagonal_zero = 1/math.sqrt(sum(e**2 for e in parts[0].extents))
         else:
-            self.diagonal_zero = diagonal_zero
+            self.one_over_diagonal_zero = one_over_diagonal_zero
 
         ### maintain "on the fly" objectives ###
         # First sum in seam objective: \sum_{C \in T}eps(C)
@@ -160,6 +160,7 @@ class BSP:
                 one_over_theta_zero=self.one_over_theta_zero,
                 seam_sum=self.seam_sum + eps_seam,
                 latest_eps_seam=eps_seam,
+                one_over_diagonal_zero=self.one_over_diagonal_zero
             )
         else:
             return None
@@ -187,5 +188,5 @@ class BSP:
 
     def _objective_seam(self, sum_parts_est_req):
         return self.one_over_theta_zero * (
-            self.seam_sum / self.diagonal_zero + self.latest_eps_seam * (sum_parts_est_req - len(self.parts))
+            self.seam_sum * self.one_over_diagonal_zero + self.latest_eps_seam * (sum_parts_est_req - len(self.parts))
         ) 
