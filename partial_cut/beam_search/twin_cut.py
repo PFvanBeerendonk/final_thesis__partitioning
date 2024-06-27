@@ -90,7 +90,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     except AttributeError:
         # the interworkings between helpers.sample_origins and this here above is flaky
         print(f'\nNo intersection with origin: {plane_origin} and normal: {plane_normal}')
-        return []
+        return [], None
 
     # determine which faces are connected
     connected_components = list(_find_connected(mesh, face_indeces))

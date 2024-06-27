@@ -112,20 +112,26 @@ class BSP:
         We only need to maintain track of the parts, which are all meshes
     """
 
-    def __init__(self, parts: list[Part], theta_zero = 0, seam_sum = 0, latest_seam = 0):
+    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, diagonal_zero=0):
         if len(parts) == 0:
             raise Exception('Must have at least 1 part')
         self.parts = parts
 
-        if theta_zero == 0:
-            self.theta_zero = parts[0].est_part_required()
+        if one_over_theta_zero == 0:
+            self.one_over_theta_zero = 1 / parts[0].est_part_required()
         else:
-            self.theta_zero = theta_zero
+            self.one_over_theta_zero = one_over_theta_zero
+
+        if diagonal_zero == 0:
+            # length of diagonal of OBB, is sqrt(x^2 + y^2 + z^2)
+            self.diagonal_zero = math.sqrt(sum(e**2 for e in parts[0].extents))
+        else:
+            self.diagonal_zero = diagonal_zero
 
         ### maintain "on the fly" objectives ###
         # First sum in seam objective: \sum_{C \in T}eps(C)
         self.seam_sum = seam_sum
-        self.latest_seam = latest_seam
+        self.latest_eps_seam = latest_eps_seam
 
     def all_fit(self):
         return all(part.fits_in_volume for part in self.parts)
@@ -151,9 +157,9 @@ class BSP:
         if len(new_parts) > 0:
             return BSP(
                 parts=parts + new_parts, 
-                theta_zero=self.theta_zero,
+                one_over_theta_zero=self.one_over_theta_zero,
                 seam_sum=self.seam_sum + eps_seam,
-                latest_seam=eps_seam,
+                latest_eps_seam=eps_seam,
             )
         else:
             return None
@@ -161,15 +167,16 @@ class BSP:
     
     ### OBJECTIVE FUNCTIONS ###
     def score(self):
+        sum_parts_est_req = sum(p.est_part_required() for p in self.parts)
         return (
-            PART_WEIGHT * self._objective_part() + 
+            PART_WEIGHT * self._objective_part(sum_parts_est_req) + 
             UTIL_WEIGHT * self._objective_util() +
-            SEAM_WEIGHT * self._objective_seam()
+            SEAM_WEIGHT * self._objective_seam(sum_parts_est_req)
         )
 
-    def _objective_part(self):
+    def _objective_part(self, sum_parts_est_req):
         # 1/Theta * \sum p /in T O(p)
-        return 1/self.theta_zero * sum(p.est_part_required() for p in self.parts)
+        return self.one_over_theta_zero * sum_parts_est_req
 
     def _objective_util(self):
         print_volume = PRINT_VOLUME[0] * PRINT_VOLUME[1] * PRINT_VOLUME[2]
@@ -178,7 +185,7 @@ class BSP:
 
         return max(_util(p) for p in self.parts)
 
-    def _objective_seam(self):
-        return 1/self.theta_zero * (
-            self.seam_sum + self.latest_seam * sum(p.est_part_required() - 1 for p in self.parts)
+    def _objective_seam(self, sum_parts_est_req):
+        return self.one_over_theta_zero * (
+            self.seam_sum / self.diagonal_zero + self.latest_eps_seam * (sum_parts_est_req - len(self.parts))
         ) 
