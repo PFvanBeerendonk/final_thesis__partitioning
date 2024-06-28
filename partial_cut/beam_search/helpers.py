@@ -1,20 +1,23 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-import os
+import os, math
 from igl import ambient_occlusion, per_vertex_normals
 import numpy as np
 from datetime import datetime
 
 from trimesh.base import Trimesh
 from trimesh.creation import icosphere
+from trimesh.transformations import angle_between_vectors
 
 from config import (
     PLANE_SPACER, OUTPUT_FOLDER, SEAM_OCCLUSION_RAY_COUNT,
-    PART_WEIGHT, UTIL_WEIGHT, SEAM_WEIGHT,
+    PART_WEIGHT, UTIL_WEIGHT, SEAM_WEIGHT, PRINT_VOLUME, 
+    SUF_DIFF_DISTANCE, SUF_DIFF_ANGLE,
 )
 if TYPE_CHECKING:
     from bsp import BSP, Part
 
+DIAGONAL_PRINTING_VOLUME =  math.sqrt(sum(e**2 for e in PRINT_VOLUME))
 
 def highest_ranked(bsp_set: list[BSP]) -> BSP:
     '''
@@ -49,10 +52,32 @@ def get_uniform_normals():
     '''
     return icosphere(subdivisions=2, radius=1).vertices
 
+DISTANCE_THRESHOLD = DIAGONAL_PRINTING_VOLUME * SUF_DIFF_DISTANCE
+ANGLE_THRESHOLD = np.pi * SUF_DIFF_ANGLE
+
+def _sufficiently_different_bsp(bsp1: BSP, bsp2: BSP):
+    if bsp1.latest_origin is None or bsp2.latest_origin is None:
+        return True
+    if bsp1.latest_normal is None or bsp2.latest_normal is None:
+        return True
+
+    o = bsp2.latest_origin  # other plane origin
+    delta = o - bsp1.latest_origin  # vector from this plane's origin to the others'
+    dist = abs(bsp1.latest_normal @ delta)  # distance along this plane's normal to other plane
+    # angle between this plane's normal vector and the other plane's normal vector
+    angle = angle_between_vectors(bsp1.latest_normal, bsp2.latest_normal)
+    # also consider angle between the vectors in the opposite direction
+    angle = min(np.pi - angle, angle)
+    # check if either the distance or the angle are above their respective thresholds
+    return dist > DISTANCE_THRESHOLD or angle > ANGLE_THRESHOLD
+
 def sufficiently_different(bsp: BSP, bsp_set: list[BSP]) -> bool:
-    # TODO: make working
-    # just store most recent normal + origin
-    return True
+    """
+    If latest cut of bsp is too close to some bsp in bsp_set, return false
+
+    NOTE: bsp.normals and bsp.origins can be empty
+    """
+    return all(_sufficiently_different_bsp(bsp, b) for b in bsp_set)
 
 def sample_origins(mesh: Trimesh, normal) -> list[(int, int, int)]:
     """

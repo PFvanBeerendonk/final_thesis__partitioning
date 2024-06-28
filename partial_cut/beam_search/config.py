@@ -8,9 +8,13 @@ OUTPUT_FOLDER = '../../output'
 BEAM_WIDTH = 3
 
 # Spacing of the uniform planes when cutting (in mm)
-PLANE_SPACER = 10
+PLANE_SPACER = 5
 # Number of rays shot per vertex to calculate 
 SEAM_OCCLUSION_RAY_COUNT = 20
+# RMS distance threshold for "sufficiently different" w.r.t. diagonal of printing volume
+SUF_DIFF_DISTANCE = 0.1
+# difference in angle, multiplied by pi
+SUF_DIFF_ANGLE = 0.1
 
 # Print Volume (w, h, d) (in mm)
 # set the same as the Anycubic Photon Mono 4k

@@ -114,7 +114,7 @@ class BSP:
         We only need to maintain track of the parts, which are all meshes
     """
 
-    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, one_over_diagonal_zero=0):
+    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, one_over_diagonal_zero=0, latest_normal=None, latest_origin=None):
         if len(parts) == 0:
             raise Exception('Must have at least 1 part')
         self.parts = parts
@@ -134,6 +134,10 @@ class BSP:
         # First sum in seam objective: \sum_{C \in T}eps(C)
         self.seam_sum = seam_sum
         self.latest_eps_seam = latest_eps_seam
+
+        # maintain sufficiently different
+        self.latest_normal=latest_normal
+        self.latest_origin=latest_origin
 
     def all_fit(self):
         return all(part.fits_in_volume for part in self.parts)
@@ -162,7 +166,9 @@ class BSP:
                 one_over_theta_zero=self.one_over_theta_zero,
                 seam_sum=self.seam_sum + eps_seam * self.one_over_diagonal_zero,
                 latest_eps_seam=eps_seam * self.one_over_diagonal_zero,
-                one_over_diagonal_zero=self.one_over_diagonal_zero
+                one_over_diagonal_zero=self.one_over_diagonal_zero,
+                latest_normal=plane_normal,
+                latest_origin=plane_origin,
             )
         else:
             return None
