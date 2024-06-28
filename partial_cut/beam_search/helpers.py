@@ -8,7 +8,10 @@ from datetime import datetime
 from trimesh.base import Trimesh
 from trimesh.creation import icosphere
 
-from config import PLANE_SPACER, OUTPUT_FOLDER
+from config import (
+    PLANE_SPACER, OUTPUT_FOLDER, SEAM_OCCLUSION_RAY_COUNT,
+    PART_WEIGHT, UTIL_WEIGHT, SEAM_WEIGHT,
+)
 if TYPE_CHECKING:
     from bsp import BSP, Part
 
@@ -103,7 +106,7 @@ def calculate_eps_objective_seam(vertices, faces, cap):
     # as far as I understand, calculates ao for v_sample with normals n_sample 
     # the final number is a scalar showing 0 if very occluded, and 1 if not at all occluded
     # it is also used to render ambient lighting
-    ao = ambient_occlusion(vertices, faces, v_sample, n_sample, 20)
+    ao = ambient_occlusion(vertices, faces, v_sample, n_sample, SEAM_OCCLUSION_RAY_COUNT)
 
     # eps(C) = \sum_{onedge} p where p is ambient occlusion
     return sum(ao)
@@ -114,11 +117,28 @@ def export_part(part: Part, name='intermediate', val=''):
     current_location = os.path.dirname(__file__)
     part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{val}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
-def export_bsp(bsp: BSP, name='out'):
+def export_bsp(bsp: BSP, name='out', timing=None):
     now = datetime.now()
     current_location = os.path.dirname(__file__)
+    path_to_files = f'{current_location}/{OUTPUT_FOLDER}/{now.strftime("%m-%d-%Y--%H-%M")}'
+    os.mkdir(path_to_files)
     for i, part in enumerate(bsp.parts):
-        part.mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
+        part.mesh.export(f'{path_to_files}/{name}{i}--.stl')
+    
+    file = open(f'{path_to_files}/stats.txt', 'w')
+    file.write(f'''time: {timing} seconds
+
+final scores:
+Nr of Parts: {len(bsp.parts)}
+Util:        {bsp._objective_util()}
+Seam:        {bsp._objective_seam(bsp._get_sum_parts_est_req())}
+
+Weights:
+PART_WEIGHT = {PART_WEIGHT}
+UTIL_WEIGHT = {UTIL_WEIGHT}
+SEAM_WEIGHT = {SEAM_WEIGHT}
+''')
+    file.close()
 
 def export_mesh_list(lst, name='lout', val=''):
     now = datetime.now()

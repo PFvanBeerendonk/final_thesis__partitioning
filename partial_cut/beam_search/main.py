@@ -19,18 +19,24 @@ def main():
     if len(parts) != 1:
         raise Exception('Too many parts, mesh must consist of a single part')
 
-
-    print('Starting beam search, start time')
+    # get last part of path, and then cut of .stl (last 4 chars)
+    model_name = INPUT_FILE_PATH.split('/')[-1][:-4]
+    print(f'Starting beam search for model {model_name}, start time')
     start_time = time.time()
 
     bsp = beam_search(mesh)
 
     end_time = time.time()
+    timing = end_time - start_time
     print('Finished beam search, end time')
-    print(f'\n--- Time elapsed = {end_time - start_time} seconds ---\n')
+    print(f'\n--- Time elapsed = {timing} seconds ---\n')
+    print('final scores:')
+    print(f'Nr of Parts: {len(bsp.parts)}')
+    print(f'Util:        {bsp._objective_util()}')
+    print(f'Seam:        {bsp._objective_seam(bsp._get_sum_parts_est_req())}\n')
 
     print('Exporting Files of best Partition')
-    export_bsp(bsp)
+    export_bsp(bsp, name=f'out-{model_name}', timing=timing)
 
 if __name__ == '__main__':
     main()

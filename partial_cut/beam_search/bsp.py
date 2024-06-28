@@ -14,6 +14,8 @@ from trimesh.bounds import oriented_bounds
 from trimesh.graph import face_adjacency
 import networkx as nx
 
+PRINT_VOLUME_CALCULATED = PRINT_VOLUME[0] * PRINT_VOLUME[1] * PRINT_VOLUME[2]
+
 # Maintain knowledge about parts
 class Part:
     def __init__(self, mesh: Trimesh):
@@ -158,8 +160,8 @@ class BSP:
             return BSP(
                 parts=parts + new_parts, 
                 one_over_theta_zero=self.one_over_theta_zero,
-                seam_sum=self.seam_sum + eps_seam,
-                latest_eps_seam=eps_seam,
+                seam_sum=self.seam_sum + eps_seam * self.one_over_diagonal_zero,
+                latest_eps_seam=eps_seam * self.one_over_diagonal_zero,
                 one_over_diagonal_zero=self.one_over_diagonal_zero
             )
         else:
@@ -168,25 +170,29 @@ class BSP:
     
     ### OBJECTIVE FUNCTIONS ###
     def score(self):
-        sum_parts_est_req = sum(p.est_part_required() for p in self.parts)
+        sum_parts_est_req = self._get_sum_parts_est_req()
         return (
             PART_WEIGHT * self._objective_part(sum_parts_est_req) + 
             UTIL_WEIGHT * self._objective_util() +
             SEAM_WEIGHT * self._objective_seam(sum_parts_est_req)
         )
+    
+    def _get_sum_parts_est_req(self):
+        return sum(p.est_part_required() for p in self.parts)
 
     def _objective_part(self, sum_parts_est_req):
         # 1/Theta * \sum p /in T O(p)
         return self.one_over_theta_zero * sum_parts_est_req
 
     def _objective_util(self):
-        print_volume = PRINT_VOLUME[0] * PRINT_VOLUME[1] * PRINT_VOLUME[2]
         def _util(part):
-            return 1 - part.volume() / (part.est_part_required()*print_volume)
+            return 1 - part.volume() / (part.est_part_required() * PRINT_VOLUME_CALCULATED)
 
         return max(_util(p) for p in self.parts)
 
     def _objective_seam(self, sum_parts_est_req):
+        nr_of_cuts_todo = sum_parts_est_req - len(self.parts)
+
         return self.one_over_theta_zero * (
-            self.seam_sum * self.one_over_diagonal_zero + self.latest_eps_seam * (sum_parts_est_req - len(self.parts))
-        ) 
+            self.seam_sum + self.latest_eps_seam * nr_of_cuts_todo
+        )
