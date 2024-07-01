@@ -22,8 +22,8 @@ class RunnerClass(TestCase):
         for sp in seam_params:
             for up in util_params:
                 print(f'\n--- TEST CASE util={up} seam={sp} ---\n')
-                @patch('bsp.SEAM_WEIGHT', up)
-                @patch('helpers.SEAM_WEIGHT', up)
+                @patch('bsp.UTIL_WEIGHT', up)
+                @patch('helpers.UTIL_WEIGHT', up)
                 @patch('bsp.SEAM_WEIGHT', sp)
                 @patch('helpers.SEAM_WEIGHT', sp)
                 def patched_runner():
@@ -39,6 +39,6 @@ class RunnerClass(TestCase):
 if __name__ == '__main__':
     runner = RunnerClass()
     runner.run_all(
+        seam_params=[0.0001, 0.001, 0.01, 0.1],
         util_params=[0.01, 0.001, 0.0001],
-        seam_params=[0, 0.0001, 0.001, 0.01, 0.1]
     )
