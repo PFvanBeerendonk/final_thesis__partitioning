@@ -2,59 +2,43 @@ from unittest import skip
 from unittest.mock import patch
 from unittest import TestCase
 
+from datetime import datetime
+from config import OUTPUT_FOLDER
+import os
 
+from helpers import write_statfile_to_export
 from main import main
 
+def write_file(e):
+    now = datetime.now()
+    current_location = os.path.dirname(__file__)
+    path_to_files = f'{current_location}/{OUTPUT_FOLDER}/{now.strftime("%m-%d-%Y--%H-%M")}'
+    os.mkdir(path_to_files)
+    write_statfile_to_export(path_to_files, 'error', str(e))
+
+
 class RunnerClass(TestCase):
-    def run_all(self):
-        self.test_seam0()
-        self.test_seam0001()
-        self.test_seam001()
-        self.test_seam01()
+    def run_all(self, seam_params=[], util_params=[]):
+        for sp in seam_params:
+            for up in util_params:
+                print(f'\n--- TEST CASE util={up} seam={sp} ---\n')
+                @patch('bsp.SEAM_WEIGHT', up)
+                @patch('helpers.SEAM_WEIGHT', up)
+                @patch('bsp.SEAM_WEIGHT', sp)
+                @patch('helpers.SEAM_WEIGHT', sp)
+                def patched_runner():
+                    main()
 
-    @patch('bsp.SEAM_WEIGHT', 0)
-    @patch('helpers.SEAM_WEIGHT', 0)
-    def test_seam0(self):
-        main()
+                try:
+                    patched_runner()
+                except Exception as e:
+                    write_file(e)
 
-    @patch('bsp.SEAM_WEIGHT', 0.001)
-    @patch('helpers.SEAM_WEIGHT', 0.001)
-    def test_seam0001(self):
-        main()
-
-    @patch('bsp.SEAM_WEIGHT', 0.01)
-    @patch('helpers.SEAM_WEIGHT', 0.01)
-    def test_seam001(self):
-        main()
-
-    @patch('bsp.SEAM_WEIGHT', 0.1)
-    @patch('helpers.SEAM_WEIGHT', 0.1)
-    def test_seam01(self):
-        main()
-
-@patch('bsp.UTIL_WEIGHT', 0)
-@patch('helpers.UTIL_WEIGHT', 0)
-class RunnerTestUtil0(RunnerClass):
-    pass
-
-@patch('bsp.UTIL_WEIGHT', 0.1)
-@patch('helpers.UTIL_WEIGHT', 0.1)
-class RunnerTestUtil01(RunnerClass):
-    pass
-
-@patch('bsp.UTIL_WEIGHT', 0.01)
-@patch('helpers.UTIL_WEIGHT', 0.01)
-class RunnerTestUtil001(RunnerClass):
-    pass
-
-@patch('bsp.UTIL_WEIGHT', 0.001)
-@patch('helpers.UTIL_WEIGHT', 0.001)
-class RunnerTestUtil0001(RunnerClass):
-    pass
 
 
 if __name__ == '__main__':
-    runner_classes = [RunnerTestUtil0, RunnerTestUtil01, RunnerTestUtil001, RunnerTestUtil0001]
-    for c in runner_classes:
-        runner = c()
-        runner.run_all()
+    runner = RunnerClass()
+    runner.run_all(
+        util_params=[0.01, 0.001, 0.0001],
+        seam_params=[0, 0.0001, 0.001, 0.01, 0.1]
+    )

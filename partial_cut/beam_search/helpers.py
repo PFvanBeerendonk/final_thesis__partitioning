@@ -149,9 +149,7 @@ def export_bsp(bsp: BSP, name='out', timing=None):
     os.mkdir(path_to_files)
     for i, part in enumerate(bsp.parts):
         part.mesh.export(f'{path_to_files}/{name}{i}--.stl')
-    
-    file = open(f'{path_to_files}/stats.txt', 'w')
-    file.write(f'''time: {timing} seconds
+    write_statfile_to_export(path_to_files, 'stats', f'''time: {timing} seconds
 
 final scores:
 Nr of Parts: {len(bsp.parts)}
@@ -163,7 +161,6 @@ PART_WEIGHT = {PART_WEIGHT}
 UTIL_WEIGHT = {UTIL_WEIGHT}
 SEAM_WEIGHT = {SEAM_WEIGHT}
 ''')
-    file.close()
 
 def export_mesh_list(lst, name='lout', val=''):
     now = datetime.now()
@@ -171,6 +168,10 @@ def export_mesh_list(lst, name='lout', val=''):
     for i, mesh in enumerate(lst):
         mesh.export(f'{current_location}/{OUTPUT_FOLDER}/{name}{val}{i}--{now.strftime("%m-%d-%Y--%H-%M")}.stl')
 
+def write_statfile_to_export(path_to_files, name, content):
+    file = open(f'{path_to_files}/{name}.txt', 'w')
+    file.write(content)
+    file.close()
 
 # mathematics
 
