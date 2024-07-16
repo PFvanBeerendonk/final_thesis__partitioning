@@ -2,6 +2,9 @@
 INPUT_FILE_PATH = '../../models/tue_logo.stl'
 OUTPUT_FOLDER = '../../output'
 
+# if BREAK_AT_TOO_MANY is true, stop beam_search after .. cuts
+BREAK_AT_TOO_MANY = True
+BREAK_AT_TOO_MANY_VAL = 10
 
 ### Parameters ###
 # Number of bsp's considered at one time

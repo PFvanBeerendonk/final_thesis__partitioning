@@ -18,27 +18,32 @@ def write_file(e):
 
 
 class RunnerClass(TestCase):
-    def run_all(self, seam_params=[], util_params=[]):
-        for sp in seam_params:
+    def run_all(self, util_params=[], seam_params=[], input_file_paths=[]):
+        for input_file_path in input_file_paths:
+            print(f'\n--- MODEL {input_file_path} --- \n\n\n' )
             for up in util_params:
-                print(f'\n--- TEST CASE util={up} seam={sp} ---\n')
-                @patch('bsp.UTIL_WEIGHT', up)
-                @patch('helpers.UTIL_WEIGHT', up)
-                @patch('bsp.SEAM_WEIGHT', sp)
-                @patch('helpers.SEAM_WEIGHT', sp)
-                def patched_runner():
-                    main()
+                for sp in seam_params:
+                    
+                    print(f'\n--- TEST CASE util={up} seam={sp} ---\n')
+                    @patch('main.INPUT_FILE_PATH', input_file_path)
+                    @patch('bsp.UTIL_WEIGHT', up)
+                    @patch('helpers.UTIL_WEIGHT', up)
+                    @patch('bsp.SEAM_WEIGHT', sp)
+                    @patch('helpers.SEAM_WEIGHT', sp)
+                    def patched_runner():
+                        main()
 
-                try:
-                    patched_runner()
-                except Exception as e:
-                    write_file(e)
-
+                    try:
+                        patched_runner()
+                    except Exception as e:
+                        write_file(e)
 
 
 if __name__ == '__main__':
     runner = RunnerClass()
+
     runner.run_all(
-        seam_params=[0.0001, 0.001, 0.01, 0.1],
-        util_params=[0.01, 0.001, 0.0001],
+        input_file_paths=['../../models/propeller.stl', '../../models/spikes.stl'],
+        util_params=[0, 0.1, 0.01, 0.001, 0.0001],
+        seam_params=[0, 0.0001, 0.001, 0.01, 0.1],
     )

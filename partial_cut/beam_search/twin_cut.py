@@ -95,15 +95,23 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     # determine which faces are connected
     connected_components = list(_find_connected(mesh, face_indeces))
 
+    path = slice2d.to_planar()[0]
     out_list = []
     for components in powerset_no_emptyset(connected_components):
         face_index = flatten(components)
+        
+        try:
+             #.length
+            seam_length = path.length
+        except:
+            print('an error occured while getting seam_length')
+            seam_length = 100
 
         # cut
         try:
             new_mesh, eps_seam = slice_mesh_plane(
                 mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
-                face_index=face_index,
+                face_index=face_index, seam_length=seam_length,
             )
         except EmptyCutException:
             # Exception, see testcase TestFailingTwinCuts.test_donut
@@ -138,6 +146,7 @@ def slice_mesh_plane(
     plane_normal,
     plane_origin,
     face_index=None,
+    seam_length=None,
     **kwargs,
 ):
     """
@@ -189,6 +198,7 @@ def slice_mesh_plane(
             plane_normal=normal,
             plane_origin=origin,
             face_index=face_index,
+            seam_length=seam_length,
         )
 
     # return the sliced mesh, do NOT delete duplicate vertices (process=False)
@@ -253,6 +263,7 @@ def slice_faces_plane_double(
     plane_normal,
     plane_origin,
     face_index=None,
+    seam_length=0,
 ):
     """
     Slice a mesh (given as a set of faces and vertices) with a plane, returning a
@@ -530,7 +541,7 @@ def slice_faces_plane_double(
     )
 
     # find ambient occlusion for all vertices that were added, i.e. everything in vertices[len(vertices):]
-    eps_seam = calculate_eps_objective_seam(new_vertices.copy(), new_faces.copy(), len(vertices))
+    eps_seam = calculate_eps_objective_seam(new_vertices.copy(), new_faces.copy(), len(vertices), seam_length)
 
     # use the unique indexes for our final vertex and faces
     final_vert = new_vertices[unique]

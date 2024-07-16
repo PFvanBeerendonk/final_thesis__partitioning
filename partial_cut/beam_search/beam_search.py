@@ -1,17 +1,17 @@
-import sys
+import sys, time
 
-from config import BEAM_WIDTH
+from config import BEAM_WIDTH, BREAK_AT_TOO_MANY, BREAK_AT_TOO_MANY_VAL
 from trimesh import Trimesh
 from bsp import BSP, Part
 from helpers import (
     all_at_goal, not_at_goal_set, highest_ranked, 
     get_uniform_normals, sufficiently_different,
-    sample_origins,
+    sample_origins, export_bsp
 )
 
 uniform_normals = get_uniform_normals()
 
-def beam_search(object_mesh: Trimesh):
+def beam_search(object_mesh: Trimesh, start_time):
     # Initialize with a bsp containing just the object
     current_bsp_set = [BSP([Part(object_mesh)])]
 
@@ -32,6 +32,10 @@ def beam_search(object_mesh: Trimesh):
             new_bsp_set.remove(best)
             current_bsp_set.append(best)
         number_of_cuts += 1
+        if BREAK_AT_TOO_MANY and number_of_cuts > BREAK_AT_TOO_MANY_VAL:
+            # Too many cuts
+            return highest_ranked(current_bsp_set)
+            
 
     print('\n')
     return highest_ranked(current_bsp_set)
