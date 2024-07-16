@@ -27,7 +27,7 @@ class BaseModelTestCase(TestCase):
         '''
         self._load_model(sample_name)
 
-        result_parts = twin_cut(self.mesh, normal, origin)
+        result_parts, eps = twin_cut(self.mesh, normal, origin)
         
         # export before assert
         if export: 

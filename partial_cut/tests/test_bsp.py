@@ -64,6 +64,8 @@ class TestAllFit(TestCase):
 
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
+@patch('beam_search.bsp.UTIL_WEIGHT', 0)
+@patch('beam_search.bsp.SEAM_WEIGHT', 0)
 class TestObjectivePart(TestCase):
     def test_one_part(self):
         c1 = cylinder(radius=2, height=10, sections=100)
@@ -72,7 +74,7 @@ class TestObjectivePart(TestCase):
         assert p1.est_part_required() == 1
         bsp = BSP([ p1 ])
         # 1 / 1 * sum(1)
-        assert bsp._objective_part() == 1
+        assert bsp.score() == 1
 
     def test_mul_parts(self):
         c1 = cylinder(radius=2, height=10, sections=100)
@@ -87,7 +89,7 @@ class TestObjectivePart(TestCase):
         
         bsp = BSP([ p1, p2, p3 ])
         # 1/1 * sum(1+1+4)
-        assert bsp._objective_part() == 6
+        assert bsp.score() == 6
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
 class TestObjectiveUtil(TestCase):

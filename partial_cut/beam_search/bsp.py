@@ -5,8 +5,7 @@ import math
 from helpers import flatten
 from twin_cut import twin_cut
 from config import (
-    PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, CONNECTOR_WEIGHT,
-    CONNECTOR_CONSTANT
+    PRINT_VOLUME, PART_WEIGHT, UTIL_WEIGHT, SEAM_WEIGHT
 )
 
 from trimesh import Trimesh
@@ -14,6 +13,8 @@ from trimesh.bounds import oriented_bounds
 
 from trimesh.graph import face_adjacency
 import networkx as nx
+
+PRINT_VOLUME_CALCULATED = PRINT_VOLUME[0] * PRINT_VOLUME[1] * PRINT_VOLUME[2]
 
 # Maintain knowledge about parts
 class Part:
@@ -83,10 +84,10 @@ class Part:
             @returns list of pairs of parts resulting from cutting using the plane and 'sowing' some cuts back together
         '''
         
-        res = twin_cut(self.mesh, plane_normal, plane_origin)
+        res, eps_seam = twin_cut(self.mesh, plane_normal, plane_origin)
 
         # flatten
-        return flatten(res, (lambda p: Part(p)))
+        return flatten(res, (lambda p: Part(p))), eps_seam
 
 
     """
@@ -113,18 +114,30 @@ class BSP:
         We only need to maintain track of the parts, which are all meshes
     """
 
-    def __init__(self, parts: list[Part], theta_zero = 0, obj_conn = 0):
+    def __init__(self, parts: list[Part], one_over_theta_zero=0, seam_sum=0, latest_eps_seam=0, one_over_diagonal_zero=0, latest_normal=None, latest_origin=None):
         if len(parts) == 0:
             raise Exception('Must have at least 1 part')
         self.parts = parts
 
-        if theta_zero == 0:
-            self.theta_zero = parts[0].est_part_required()
+        if one_over_theta_zero == 0:
+            self.one_over_theta_zero = 1 / parts[0].est_part_required()
         else:
-            self.theta_zero = theta_zero
+            self.one_over_theta_zero = one_over_theta_zero
 
-        # maintain "on the fly" objectives
-        self.obj_conn = obj_conn
+        if one_over_diagonal_zero == 0:
+            # length of diagonal of OBB, is sqrt(x^2 + y^2 + z^2)
+            self.one_over_diagonal_zero = 1/math.sqrt(sum(e**2 for e in parts[0].extents))
+        else:
+            self.one_over_diagonal_zero = one_over_diagonal_zero
+
+        ### maintain "on the fly" objectives ###
+        # First sum in seam objective: \sum_{C \in T}eps(C)
+        self.seam_sum = seam_sum
+        self.latest_eps_seam = latest_eps_seam
+
+        # maintain sufficiently different
+        self.latest_normal=latest_normal
+        self.latest_origin=latest_origin
 
     def all_fit(self):
         return all(part.fits_in_volume for part in self.parts)
@@ -142,7 +155,7 @@ class BSP:
         parts = [p for p in self.parts]
         parts.remove(part)
 
-        new_parts = part.twin_cut(
+        new_parts, eps_seam = part.twin_cut(
             plane_normal=plane_normal, 
             plane_origin=plane_origin,
         )
@@ -150,14 +163,12 @@ class BSP:
         if len(new_parts) > 0:
             return BSP(
                 parts=parts + new_parts, 
-                theta_zero=self.theta_zero,
-
-                # update on_the_fly objectives
-                obj_conn=self._update_objectives_at_cut(
-                    part=part, 
-                    plane_normal=plane_normal, 
-                    plane_origin=plane_origin
-                ),
+                one_over_theta_zero=self.one_over_theta_zero,
+                seam_sum=self.seam_sum + eps_seam * self.one_over_diagonal_zero,
+                latest_eps_seam=eps_seam * self.one_over_diagonal_zero,
+                one_over_diagonal_zero=self.one_over_diagonal_zero,
+                latest_normal=plane_normal,
+                latest_origin=plane_origin,
             )
         else:
             return None
@@ -165,56 +176,29 @@ class BSP:
     
     ### OBJECTIVE FUNCTIONS ###
     def score(self):
+        sum_parts_est_req = self._get_sum_parts_est_req()
         return (
-            PART_WEIGHT * self._objective_part() + 
+            PART_WEIGHT * self._objective_part(sum_parts_est_req) + 
             UTIL_WEIGHT * self._objective_util() +
-            CONNECTOR_WEIGHT * self._objective_connector()
+            SEAM_WEIGHT * self._objective_seam(sum_parts_est_req)
         )
     
-    
+    def _get_sum_parts_est_req(self):
+        return sum(p.est_part_required() for p in self.parts)
 
-    def _update_objectives_at_cut(self, part: Part, plane_origin, plane_normal):
-        return 0
-
-        print('\n')
-        # slice_cap, _ = part.mesh.section(plane_origin=plane_origin, plane_normal=plane_normal).to_planar()
-        from trimesh.intersections import mesh_plane
-
-        # xx, yy = mesh_plane(part.mesh, plane_normal, plane_origin, return_faces=True)
-        # print('uwu', xx)
-
-
-        cap_3d = part.mesh.section(plane_origin=plane_origin, plane_normal=plane_normal)
-        # print(cap_3d.explode())
-        # returns Path3D
-        cap_2d, _ = cap_3d.to_planar() # maybe pass plane_normal, do a speed check. Should speed it up and this is the plane we wanna project to anyways
-        area_g = cap_2d.area
-        print()
-
-        from trimesh.path.polygons import paths_to_polygons
-
-        # print( paths_to_polygons(slice_cap.entities))
-
-
-
-        raise Exception('end')
-
-        x = 1 # set to Ag/ag - CONNECTOR_CONSTANT
-        obj_conn = max(self.obj_conn, x)
-        return obj_conn
-
-    def _objective_part(self):
+    def _objective_part(self, sum_parts_est_req):
         # 1/Theta * \sum p /in T O(p)
-        return 1/self.theta_zero * sum(p.est_part_required() for p in self.parts)
+        return self.one_over_theta_zero * sum_parts_est_req
 
     def _objective_util(self):
-        print_volume = PRINT_VOLUME[0] * PRINT_VOLUME[1] * PRINT_VOLUME[2]
         def _util(part):
-            return 1 - part.volume() / (part.est_part_required()*print_volume)
+            return 1 - part.volume() / (part.est_part_required() * PRINT_VOLUME_CALCULATED)
 
         return max(_util(p) for p in self.parts)
 
-    # self.obj_conn is initially 0 (as no cuts have been made)
-    # Every time a cut is made, we update obj_conn
-    def _objective_connector(self):
-        return self.obj_conn
+    def _objective_seam(self, sum_parts_est_req):
+        nr_of_cuts_todo = sum_parts_est_req - len(self.parts)
+
+        return self.one_over_theta_zero * (
+            self.seam_sum + self.latest_eps_seam * nr_of_cuts_todo
+        )

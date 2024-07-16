@@ -8,7 +8,7 @@ from trimesh.caching import tracked_array
 
 from beam_search.helpers import (
     highest_ranked, all_at_goal, not_at_goal_set, powerset_no_emptyset,
-    flatten, sample_origins, 
+    flatten, sample_origins, _sufficiently_different_bsp,
 )
 from beam_search.bsp import BSP, Part
 
@@ -174,3 +174,17 @@ class TestSampleOrigins(BaseModelTestCase):
 
         origin = [ 28.69145808,  -8.64373522, -14.43068322]
         self._assert_intersects(normal=normal, origin=origin)
+
+
+class TestLatestOrigin(TestCase):
+    def test_sufficiently_different_bsp_none(self):
+        bsp1 = BSP([Part(cylinder(radius=2, height=11))])
+        bsp2 = BSP([Part(cylinder(radius=2, height=11))])
+        assert _sufficiently_different_bsp(bsp1, bsp2)
+
+    def test_sufficiently_different_bsp_valid(self):
+        normal = tracked_array([ 0, 0, 0])
+        origin = tracked_array([ 0, 0, 0])
+        bsp1 = BSP([Part(cylinder(radius=2, height=11))], latest_normal=normal, latest_origin=origin)
+        bsp2 = BSP([Part(cylinder(radius=2, height=11))], latest_normal=normal, latest_origin=origin)
+        assert not _sufficiently_different_bsp(bsp1, bsp2)

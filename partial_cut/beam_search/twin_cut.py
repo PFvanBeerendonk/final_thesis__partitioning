@@ -5,7 +5,7 @@ import networkx as nx
 from helpers import powerset_no_emptyset, flatten
 
 # debug helpers
-from helpers import export_part, export_mesh_list
+from helpers import calculate_eps_objective_seam, export_part, export_mesh_list
 
 class EmptyCutException(BaseException):
     pass
@@ -77,6 +77,8 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
     ----------
     out_list : (n, 2) Trimesh
         list of pairs of parts
+    eps_seam : int
+        value of eps(C), based on ambient occlusion of added vertices
     
     """
     slice2d = mesh.section(
@@ -87,21 +89,29 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
         face_indeces = slice2d.metadata['face_index']
     except AttributeError:
         # the interworkings between helpers.sample_origins and this here above is flaky
-        print(f'\nNo intersection with origin: {plane_origin} and normal: {plane_normal}')
-        return []
+        # print(f'\nNo intersection with origin: {plane_origin} and normal: {plane_normal}')
+        return [], None
 
     # determine which faces are connected
     connected_components = list(_find_connected(mesh, face_indeces))
 
+    path = slice2d.to_planar()[0]
     out_list = []
     for components in powerset_no_emptyset(connected_components):
         face_index = flatten(components)
+        
+        try:
+             #.length
+            seam_length = path.length
+        except:
+            print('an error occured while getting seam_length')
+            seam_length = 100
 
         # cut
         try:
-            new_mesh = slice_mesh_plane(
+            new_mesh, eps_seam = slice_mesh_plane(
                 mesh, plane_normal=plane_normal, plane_origin=plane_origin, 
-                face_index=face_index,
+                face_index=face_index, seam_length=seam_length,
             )
         except EmptyCutException:
             # Exception, see testcase TestFailingTwinCuts.test_donut
@@ -120,7 +130,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
             print(f'LEN {len(meshes)}')
             # export_mesh_list(meshes)
 
-    return out_list
+    return out_list, eps_seam
 
 # Adapted from Trimesh
 
@@ -139,6 +149,7 @@ def slice_mesh_plane(
     plane_normal,
     plane_origin,
     face_index=None,
+    seam_length=None,
     **kwargs,
 ):
     """
@@ -167,6 +178,8 @@ def slice_mesh_plane(
     ----------
     new_mesh : Trimesh object
       Sliced mesh
+    eps_seam : float
+      Estimated cost of cut C based on ambient occlusion
     """
 
     # check input plane
@@ -182,16 +195,17 @@ def slice_mesh_plane(
         plane_origin.reshape((-1, 3)), plane_normal.reshape((-1, 3))
     ):
         # save the new vertices and faces
-        vertices, faces = slice_faces_plane_double(
-            vertices=vertices,
-            faces=faces,
+        vertices, faces, eps_seam = slice_faces_plane_double(
+            vertices,
+            faces,
             plane_normal=normal,
             plane_origin=origin,
             face_index=face_index,
+            seam_length=seam_length,
         )
 
     # return the sliced mesh, do NOT delete duplicate vertices (process=False)
-    return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs)
+    return Trimesh(vertices=vertices, faces=faces, process=False, **kwargs), eps_seam
 
 def cap_vertices(mesh, origin, normal):
     vertices = mesh.vertices
@@ -252,6 +266,7 @@ def slice_faces_plane_double(
     plane_normal,
     plane_origin,
     face_index=None,
+    seam_length=0,
 ):
     """
     Slice a mesh (given as a set of faces and vertices) with a plane, returning a
@@ -527,13 +542,14 @@ def slice_faces_plane_double(
         new_faces.reshape(-1), minlength=len(new_vertices), return_inverse=True
     )
 
+    # find ambient occlusion for all vertices that were added, i.e. everything in vertices[len(vertices):]
+    eps_seam = calculate_eps_objective_seam(new_vertices.copy(), new_faces.copy(), len(vertices), seam_length)
+
     # use the unique indexes for our final vertex and faces
     final_vert = new_vertices[unique]
     final_face = inverse.reshape((-1, 3))
 
-    # TODO: remove vertices that are not used
-
-    return final_vert, final_face
+    return final_vert, final_face, eps_seam
 
 def merge_duplicate_vertices(vertices, faces, from_vindex=0):
     """
