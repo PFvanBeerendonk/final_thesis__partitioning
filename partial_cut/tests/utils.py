@@ -1,5 +1,5 @@
 from unittest import TestCase
-import os
+import os, time
 
 import trimesh
 
@@ -18,7 +18,7 @@ class BaseModelTestCase(TestCase):
         # Mesh must be watertight to guarentee a resulting mesh that is watertight
         assert self.mesh.is_watertight
 
-    def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count, export=False):
+    def _excute_horizontal_cut_improved(self, sample_name, origin, normal, expected_count, export=False, time_me=False):
         '''
             cut samples/{sample_name} at origin, normal
 
@@ -27,10 +27,17 @@ class BaseModelTestCase(TestCase):
         '''
         self._load_model(sample_name)
 
+        if time_me: start_time = time.time()
+
         result_parts, eps = twin_cut(self.mesh, normal, origin)
+
+        if time_me: 
+            end_time = time.time()
+            timing = end_time - start_time
+            print("TEST REPORT - twin_cut time in seconds:", timing)
         
         # export before assert
-        if export: 
+        if export:
             for i, p_list in enumerate(result_parts):
                 export_mesh_list(p_list, val=i)
 

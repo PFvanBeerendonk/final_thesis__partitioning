@@ -114,6 +114,7 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
                 face_index=face_index, seam_length=seam_length,
             )
         except EmptyCutException:
+            print('empty cut')
             # Exception, see testcase TestFailingTwinCuts.test_donut
             continue
 
@@ -127,8 +128,9 @@ def twin_cut(mesh, plane_normal, plane_origin) -> list[list[Trimesh]]:
             ]
             out_list.append(capped_meshes)
         else:
-            print(f'LEN {len(meshes)}')
-            # export_mesh_list(meshes)
+            print(f'mesh split got {len(meshes)} meshes, i.o. 2')
+            export_mesh_list(meshes[:2])
+            assert False
 
     return out_list, eps_seam
 
@@ -373,6 +375,7 @@ def slice_faces_plane_double(
     int_points = np.einsum("ij,ijk->ijk", dist, d) + o
     int_points_outside = np.einsum("ij,ijk->ijk", dist, d) + o
 
+    original_vertices_length = len(vertices)
     # Initialize the array of new vertices with the current vertices
     new_vertices = vertices
     new_quad_vertices = np.zeros((0, 3))
@@ -454,8 +457,8 @@ def slice_faces_plane_double(
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
 
     # process the inside vertices
-    new_vertices, new_faces = merge_duplicate_vertices(new_vertices, new_faces)
-    offset_inside = len(new_vertices)
+    new_vertices, new_faces = merge_duplicate_vertices_v1(new_vertices, new_faces)
+    new_vindex = len(new_vertices)
 
     #### Now let us hande the "outside" faces and add those
     cut_faces_quad = faces[np.logical_and(onedge, signs_sum >= 0)]
@@ -534,7 +537,7 @@ def slice_faces_plane_double(
         new_faces = np.append(new_faces, new_tri_faces, axis=0)
 
     ### end handle outside
-    new_vertices, new_faces = merge_duplicate_vertices(new_vertices, new_faces, offset_inside)
+    new_vertices, new_faces = merge_duplicate_vertices(new_vertices, new_faces, original_vertices_length, new_vindex)
 
     # find the unique indices in the new faces
     # using an integer-only unique function
@@ -551,7 +554,57 @@ def slice_faces_plane_double(
 
     return final_vert, final_face, eps_seam
 
-def merge_duplicate_vertices(vertices, faces, from_vindex=0):
+def merge_duplicate_vertices_v1(vertices, faces):
+    """
+    merges duplicate vertices, works for first merge
+
+    Parameters
+    ---------
+    vertices : (n, 3) float
+        list of vertices
+    faces : (n, 3) int : np.ndarray
+        list of vertices
+    from_vindex : int
+        index from which vertex may be merged
+
+    Returns
+    ----------
+    vertices : (n, 3) float
+    faces : (n, 3) int : np.ndarray
+    """
+    # NOTE: repurposed from Trimesh.grouping.merge_vertices
+
+    # only consider vertices that are in faces
+    referenced = np.zeros(len(vertices), dtype=bool)
+    referenced[faces] = True
+
+    # collect vertex attributes into sequence we can stack
+    digits_vertex = util.decimal_to_digits(tol.merge)
+    stacked = [vertices * (10**digits_vertex)]
+
+    # stack collected vertex properties and round to integer
+    stacked = np.column_stack(stacked).round().astype(np.int64)
+
+    from trimesh.grouping import unique_rows
+    # check unique rows of referenced vertices
+    u, i = unique_rows(stacked[referenced], keep_order=True)
+
+    # construct an inverse using the subset
+    inverse = np.zeros(len(vertices), dtype=np.int64)
+    inverse[referenced] = i
+    # get the vertex mask
+    mask = np.nonzero(referenced)[0][u]
+
+    # np.logical_and(referenced, vindex_mask)
+
+    # update faces and vertices
+    faces = inverse[faces.reshape(-1)].reshape((-1, 3))
+
+    vertices = vertices[mask]
+
+    return vertices, faces
+
+def merge_duplicate_vertices(vertices, faces, original_vindex=0, from_vindex=0):
     """
     merges duplicate vertices IF index at least `from_vindex`
 
@@ -571,17 +624,30 @@ def merge_duplicate_vertices(vertices, faces, from_vindex=0):
     """
     # NOTE: repurposed from Trimesh.grouping.merge_vertices
 
+    # mask if id >= from_index
     vindex_mask = np.arange(len(vertices))
-    vindex_mask = vindex_mask >= from_vindex
+    vindex_mask_from = vindex_mask < original_vindex
+    vindex_mask_to = vindex_mask >= from_vindex
+    
+    # vertices = OLD ++ top ++ bottom
+    # goal is to merge vertices from bottom into OLD but NOT into top
+    vindex_mask = np.logical_or(vindex_mask_from, vindex_mask_to)
 
+    # only consider vertices that are in faces
     referenced = np.zeros(len(vertices), dtype=bool)
     referenced[faces] = True
+
+    # referenced = np.logical_and(vindex_mask, referenced)
+
     # collect vertex attributes into sequence we can stack
     digits_vertex = util.decimal_to_digits(tol.merge)
     stacked = [vertices * (10**digits_vertex)]
 
     # stack collected vertex properties and round to integer
     stacked = np.column_stack(stacked).round().astype(np.int64)
+    x = -1111111111111111111
+    not_vindex_mask = np.logical_not(vindex_mask)
+    stacked[not_vindex_mask] = [x, x, x]
 
     from trimesh.grouping import unique_rows
     # check unique rows of referenced vertices
@@ -590,13 +656,28 @@ def merge_duplicate_vertices(vertices, faces, from_vindex=0):
     # construct an inverse using the subset
     inverse = np.zeros(len(vertices), dtype=np.int64)
     inverse[referenced] = i
+    
+    # inverse for the first part, is just its identity (picking that element)
+    ranged = np.arange(len(vertices))
+    ranged = ranged[referenced]
+    ranged = ranged[ranged < from_vindex]
+
+    # because we do the [x,x,x] trick above, we need to correct everything in BOTTOM, that has not been set to something in OLD
+    inverse_tail = inverse[len(ranged):]
+    inverse_tail[inverse_tail >= original_vindex] = inverse_tail[inverse_tail >= original_vindex] + sum(not_vindex_mask) - 1
+
+    inverse = np.append(ranged, inverse_tail)
+
     # get the vertex mask
     mask = np.nonzero(referenced)[0][u]
+    
+    top_range = np.arange(original_vindex, from_vindex)
+    # from mask, filter out everyting in TOP
+    middle = np.searchsorted(mask, top_range)
+    mask = np.unique(np.insert(mask, middle, top_range))
 
-    # UPDATE VERTICES
+    # update faces and vertices
     faces = inverse[faces.reshape(-1)].reshape((-1, 3))
-
-    # actually apply the mask
     vertices = vertices[mask]
 
     return vertices, faces

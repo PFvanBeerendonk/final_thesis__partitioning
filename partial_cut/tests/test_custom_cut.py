@@ -61,46 +61,8 @@ class TestCutAndHelpers(BaseModelTestCase):
 
         assert len(result_parts) == 3
  
-    def test_replace_duplicate_vertices_tri(self):
-        '''   p-------q
-              |      /|
-              |     / |
-              |    /  |
-            --a---b---c--- CUTPLANE
-              |  /    |
-              | /     |
-              x-------y
-
-            Let us consider Quads and Tris below the cutplane
-
-            QUAD x, y, b, c   inserted b, c
-            TRI x, a, b       inserted a, b
-            with offset=10
-            id x=0, y=1, a=10, b=11, c==12
-
-            replace_duplicate_vertices_tri Should merge b
-        '''
-
-        offset = 10
-        new_tri_faces = np.array([[0, 10, 11]])
-        new_tri_vertices = [[0.1, 0.1, 0.4], [1.2, 2.2020, 3.4], [0, 10, 20], [0.1, 0.1, 0.1]]
-        new_quad_vertices = [[0.1, 0.1, 0.1], [1.2, 2.2020, 3.4], [10, 20, 30], [1,2,3]]
-                
-        # prep
-        new_tri_vertices = tracked_array([tracked_array(v) for v in new_tri_vertices])
-        new_quad_vertices = tracked_array([tracked_array(v) for v in new_quad_vertices])
-
-        result = replace_duplicate_vertices_tri(offset, new_tri_faces, new_quad_vertices, new_tri_vertices)
-
-        assert len(result) == 1
-        # original index 10 has no "equivalent vertex" in QUAD
-        # original index 11 has "equivalent vertex" in QUAD at j=1
-        #  ==> update to j + offset - len(QUAD) = 1 + 10 - 4 = 7
-        assert (result[0] == [0, 10, 7]).all()
-
 
 class TestHorizontalCutSamples(BaseModelTestCase):
-    @skip
     def test_u(self):
         origin = tracked_array([ 0, 0, 4])
         normal = tracked_array([0, 0, 1])
@@ -109,7 +71,6 @@ class TestHorizontalCutSamples(BaseModelTestCase):
             'sample__u', origin, normal, 2
         )
 
-    @skip
     def test_bunny(self):
         origin = tracked_array([ 0, 0, 40])
         normal = tracked_array([0, 0, 1])
@@ -123,7 +84,7 @@ class TestHorizontalCutSamples(BaseModelTestCase):
         normal = tracked_array([0, 0, 1])
 
         res = self._excute_horizontal_cut_improved(
-            'sample__spikes', origin, normal, 1, True
+            'sample__spikes', origin, normal, 1
         )
 
 
