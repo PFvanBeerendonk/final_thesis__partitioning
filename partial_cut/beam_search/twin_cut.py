@@ -494,8 +494,6 @@ def slice_faces_plane_double(
             :,
         ].reshape(2 * num_quads, 3)
 
-        # new_quad_faces = replace_duplicate_vertices_quad(len(new_vertices), new_quad_faces, new_quad_vertices)
-
         # Add new vertices to existing vertices, triangulate quads, and add the
         # resulting triangles to the new faces
         new_vertices = np.append(new_vertices, new_quad_vertices, axis=0)
@@ -529,8 +527,6 @@ def slice_faces_plane_double(
             np.stack((tri_int_inds.T, ((tri_int_inds + 2) % 3).T), axis=1),
             :,
         ].reshape(2 * num_tris, 3)
-
-        # new_tri_faces = replace_duplicate_vertices_tri(len(new_vertices), new_tri_faces, new_quad_vertices, new_tri_vertices)
 
         # Append new vertices and new faces
         new_vertices = np.append(new_vertices, new_tri_vertices, axis=0)
