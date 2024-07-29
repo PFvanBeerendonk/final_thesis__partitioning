@@ -1,0 +1,1 @@
+Unable to allocate 305. KiB for an array with shape (6504, 6) and data type int64

@@ -1,0 +1,11 @@
+time: 2285.671502351761 seconds
+
+final scores:
+Nr of Parts: 8
+Util:        0.985370858434499
+Seam:        0.8024888640834217
+
+Weights:
+PART_WEIGHT = 1
+UTIL_WEIGHT = 0.1
+SEAM_WEIGHT = 0.001

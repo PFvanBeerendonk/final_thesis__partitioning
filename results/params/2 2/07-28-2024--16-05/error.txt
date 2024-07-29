@@ -1,0 +1,1 @@
+Unable to allocate 156. KiB for an array with shape (6646, 3) and data type float64
