@@ -26,8 +26,10 @@ if __name__ == '__main__':
             d = round(obb[1], 3)
             w = round(obb[2], 3)
 
+            v = round(mesh.volume, 0)
+
             print(file)
-            print(f'{h} & {d} & {w} & {mesh.volume} & {len(mesh.vertices)} & {len(mesh.edges)} & {len(mesh.faces)} \\\\')
+            print(f'{h} & {d} & {w} & {v} & {len(mesh.vertices)} & {len(mesh.edges)} & {len(mesh.faces)} \\\\')
             print('\n')
 
     
