@@ -5,7 +5,7 @@ import networkx as nx
 from helpers import powerset_no_emptyset, flatten
 
 # debug helpers
-from helpers import calculate_eps_objective_seam, export_part, export_mesh_list
+from helpers import calculate_eps_objective_seam
 
 class EmptyCutException(BaseException):
     pass

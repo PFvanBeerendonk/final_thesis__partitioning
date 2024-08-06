@@ -92,6 +92,7 @@ class TestObjectivePart(TestCase):
         assert bsp.score() == 6
 
 @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
+@patch('beam_search.bsp.PRINT_VOLUME_CALCULATED', 9 * 9 * 10)
 class TestObjectiveUtil(TestCase):
     def test_one_part(self):
         c1 = cylinder(radius=2, height=10, sections=100)

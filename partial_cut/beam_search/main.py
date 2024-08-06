@@ -24,7 +24,7 @@ def main():
     print(f'Starting beam search for model {model_name}, start time')
     start_time = time.time()
 
-    bsp = beam_search(mesh, start_time)
+    bsp = beam_search(mesh)
 
     end_time = time.time()
     timing = end_time - start_time

@@ -1,4 +1,4 @@
-import sys, time
+import sys
 
 from config import BEAM_WIDTH, BREAK_AT_TOO_MANY, BREAK_AT_TOO_MANY_VAL
 from trimesh import Trimesh
@@ -6,12 +6,12 @@ from bsp import BSP, Part
 from helpers import (
     all_at_goal, not_at_goal_set, highest_ranked, 
     get_uniform_normals, sufficiently_different,
-    sample_origins, export_bsp
+    sample_origins
 )
 
 uniform_normals = get_uniform_normals()
 
-def beam_search(object_mesh: Trimesh, start_time):
+def beam_search(object_mesh: Trimesh):
     # Initialize with a bsp containing just the object
     current_bsp_set = [BSP([Part(object_mesh)])]
 
