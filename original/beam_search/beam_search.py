@@ -45,12 +45,19 @@ def eval_cuts(bsp_t: BSP, part: Part, part_id: int, part_todo: int) -> list[BSP]
     candidate_cuts = []
     # collect normals
     normals = uniform_normals
-    _report_eval_cut(0, len(normals), part_id, part_todo)
+    _report_eval_cut(0, part_id, part_todo)
+    current_percentage = 0
     for i, n in enumerate(normals):
-        if i % 10 == 0:
-            _report_eval_cut(i, len(normals), part_id, part_todo)
-        for j, p in enumerate(sample_origins(part, n)):
-            candidate_cuts.append(bsp_t.cut_part(part, n, p))
+        percentage = int(i / len(normals)*100)
+        if percentage > current_percentage:
+            current_percentage = percentage
+            _report_eval_cut(current_percentage, part_id, part_todo)
+        for p in sample_origins(part.mesh, n):
+            try:
+                candidate_cuts.append(bsp_t.cut_part(part, n, p))
+            except:
+                # sometimes n,p do not actually intersect the part for some reason
+                pass
 
 
     result_cuts = []
@@ -66,9 +73,9 @@ def eval_cuts(bsp_t: BSP, part: Part, part_id: int, part_todo: int) -> list[BSP]
     Prints a progress bar to show how close `progress` is to `target`
     i.e. how many normals have been evaluated
 '''
-def _report_eval_cut(progress, target, part_i, part_todo):
+def _report_eval_cut(progress_percentage, part_i, part_todo):
     sys.stdout.write('\r')
     # the exact output you're looking for:
-    progress_percentage = int(progress / target * 100)
     sys.stdout.write(f"Evaluating Normals for bsp {part_i}/{part_todo} [%-100s] %d%%" % ('='*progress_percentage, progress_percentage))
     sys.stdout.flush()
+

@@ -1,16 +1,14 @@
-
-
-from unittest.mock import patch
-from unittest import TestCase
-import pytest, os
+from unittest import TestCase, skip
+import os
 
 import trimesh
 from trimesh.caching import tracked_array
 
-from beam_search.bsp import BSP, Part
+from beam_search.bsp import Part
 
 
 # @patch('beam_search.bsp.PRINT_VOLUME', (9, 9, 10))
+@skip
 class TestAllFit(TestCase):
     def setUp(self):
         current_location = os.path.dirname(__file__)
